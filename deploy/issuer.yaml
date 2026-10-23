@@ -1,0 +1,19 @@
+# HTTP-01 is unreliable behind a cluster that redirects HTTP to HTTPS, so this
+# issuer uses Cloudflare DNS-01. It needs a Secret `cloudflare-api-token`
+# (key `api-token`, Zone:DNS:Edit on your zone) in this namespace.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: letsencrypt-dns
+spec:
+  acme:
+    email: ${ACME_EMAIL}
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-dns-account
+    solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token

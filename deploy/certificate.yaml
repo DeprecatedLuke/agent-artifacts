@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: artifacts-tls
+  labels:
+    app: artifacts
+spec:
+  dnsNames:
+    - ${ARTIFACTS_HOST}
+  secretName: artifacts-tls
+  issuerRef:
+    name: letsencrypt-dns
+    kind: Issuer

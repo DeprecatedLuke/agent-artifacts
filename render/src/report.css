@@ -1,0 +1,1202 @@
+/*!
+ * artifacts report stylesheet — the shipped visual contract.
+ * Iron rule: no unicode arrows, check marks, symbols or emoji anywhere in a
+ * report. Every glyph is a Heroicons 20/solid icon: `<x-icon name="…">` in
+ * markup, or a mask painted from an icon reference right here in this file (the
+ * build substitutes the svg data URI from the installed heroicons package and
+ * fails on an unknown name, a leftover reference, or a banned code point under
+ * render/src; the server rejects the same ranges when a report is published).
+ */
+
+/*
+ * artifacts — the single standard stylesheet for every report.
+ * Agents never write CSS; this file is the whole visual language.
+ * Theme is driven by `color-scheme` on :root; every colour uses light-dark().
+ */
+
+:root {
+	color-scheme: light dark;
+
+	--bg: light-dark(#ffffff, #0f1115);
+	--surface: light-dark(#f6f7f9, #171a21);
+	--fg: light-dark(#1b1f24, #e6e8eb);
+	--muted: light-dark(#5b6470, #9aa3ad);
+	--border: light-dark(#e1e4e8, #2a2f38);
+	--accent: light-dark(#2563eb, #6ea8fe);
+	--ok: light-dark(#15803d, #4ade80);
+	--warn: light-dark(#b45309, #fbbf24);
+	--err: light-dark(#b91c1c, #f87171);
+
+	--font-sans: system-ui, sans-serif;
+	--font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+	--radius: 8px;
+	--measure: 880px;
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+/* Report rules set display on pre/table/svg; `hidden` must still win. */
+[hidden] {
+	display: none !important;
+}
+
+html {
+	background: var(--bg);
+	-webkit-text-size-adjust: 100%;
+}
+
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--fg);
+	font-family: var(--font-sans);
+	font-size: 16px;
+	line-height: 1.6;
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+	overflow-wrap: break-word;
+}
+
+/* ---------------------------------------------------------------- header -- */
+
+/* Same column as .report-body > *: min(measure, viewport − 2×24px gutter), centred. */
+.report-header {
+	width: min(var(--measure), 100% - 48px);
+	margin-inline: auto;
+	padding: 40px 0 20px;
+	border-bottom: 1px solid var(--border);
+}
+
+.report-project {
+	font-family: var(--font-mono);
+	font-size: 12px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+.report-title {
+	margin: 6px 0 0;
+	font-size: 30px;
+	line-height: 1.2;
+	font-weight: 650;
+	letter-spacing: -0.01em;
+}
+
+.report-description {
+	margin: 10px 0 0;
+	color: var(--muted);
+	font-size: 16px;
+	max-width: 70ch;
+}
+
+.report-meta {
+	margin-top: 14px;
+	font-size: 13px;
+	color: var(--muted);
+	font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------ body -- */
+
+.report-body {
+	max-width: 100%;
+	padding: 8px 24px 96px;
+}
+
+.report-body > * {
+	max-width: var(--measure);
+	margin-inline: auto;
+}
+
+/*
+ * Everything shares the text column, so nothing can sit out of bounds. Content
+ * wider than the column (a fixed-width spec, a long table) scrolls inside its
+ * own box instead of overflowing the page.
+ */
+.report-body > table {
+	display: block;
+	overflow-x: auto;
+}
+
+.report-body > x-chart {
+	overflow-x: auto;
+}
+
+/* --------------------------------------------------------------- headings -- */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	margin: 1.9em 0 0.6em;
+	line-height: 1.25;
+	font-weight: 650;
+	letter-spacing: -0.01em;
+	scroll-margin-top: 16px;
+}
+
+h2 {
+	font-size: 24px;
+	padding-bottom: 0.25em;
+	border-bottom: 1px solid var(--border);
+}
+
+h3 {
+	font-size: 19px;
+}
+
+h4 {
+	font-size: 16px;
+}
+
+h5,
+h6 {
+	font-size: 14px;
+	color: var(--muted);
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+}
+
+.report-body > :first-child,
+.report-body > :first-child > :first-child {
+	margin-top: 0;
+}
+
+p {
+	margin: 0 0 1em;
+}
+
+a {
+	color: var(--accent);
+	text-decoration: none;
+	text-underline-offset: 2px;
+}
+
+a:hover,
+a:focus-visible {
+	text-decoration: underline;
+}
+
+strong {
+	font-weight: 620;
+}
+
+hr {
+	border: 0;
+	border-top: 1px solid var(--border);
+	margin: 2.5em 0;
+}
+
+/* ------------------------------------------------------------------ lists -- */
+
+ul,
+ol {
+	margin: 0 0 1em;
+	padding-left: 1.4em;
+}
+
+li {
+	margin: 0.25em 0;
+}
+
+li > ul,
+li > ol {
+	margin: 0.25em 0;
+}
+
+/* Uppercase thing followed by its explanation reads best as a definition list. */
+dt {
+	font-weight: 620;
+	margin-top: 0.75em;
+}
+
+dd {
+	margin: 0.15em 0 0 0;
+	color: var(--muted);
+}
+
+/* ------------------------------------------------------------------- code -- */
+
+code,
+kbd,
+samp {
+	font-family: var(--font-mono);
+	font-size: 0.875em;
+}
+
+:not(pre) > code {
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: 5px;
+	padding: 0.1em 0.35em;
+	white-space: nowrap;
+}
+
+pre {
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	padding: 14px 16px;
+	overflow: auto;
+	line-height: 1.55;
+	tab-size: 3;
+	max-width: 100%;
+}
+
+pre > code {
+	font-size: 13.5px;
+	background: none;
+	border: 0;
+	padding: 0;
+	white-space: pre;
+}
+
+pre.shiki {
+	background: var(--surface);
+	color: var(--fg);
+}
+
+pre.shiki code {
+	font-size: 13.5px;
+}
+
+/* Shiki dual themes: colours come from the --shiki-light/--shiki-dark vars. */
+.shiki span {
+	color: light-dark(var(--shiki-light, inherit), var(--shiki-dark, inherit));
+}
+
+.shiki {
+	background-color: var(--surface) !important;
+}
+
+.kbd {
+	font-family: var(--font-mono);
+	font-size: 0.85em;
+	border: 1px solid var(--border);
+	border-bottom-width: 2px;
+	border-radius: 5px;
+	padding: 0.05em 0.4em;
+	background: var(--surface);
+}
+
+/* ---------------------------------------------------------------- quoteblk -- */
+
+/* A quote rule is not a box, so this stays a thin one-sided line. */
+blockquote {
+	margin: 1.25em 0;
+	padding: 0.1em 0 0.1em 1em;
+	border-left: 3px solid var(--border);
+	color: var(--muted);
+}
+
+blockquote > :last-child {
+	margin-bottom: 0;
+}
+
+/* ------------------------------------------------------------------ icons -- */
+
+/*
+ * `<x-icon name="check-circle" tone="ok" label="Passed">`: an inline Heroicons
+ * 20/solid svg sized to the text. The box is sized here, not by the svg, so the
+ * space is reserved before the lazily imported icon chunk lands — no layout shift.
+ */
+x-icon {
+	display: inline-block;
+	flex: none;
+	width: 1.15em;
+	height: 1.15em;
+	vertical-align: -0.2em;
+	color: inherit;
+}
+
+x-icon > svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+/* Icons grow with the text; display type gets a slightly tighter box. */
+h1 x-icon,
+h2 x-icon,
+h3 x-icon,
+h4 x-icon {
+	width: 1.05em;
+	height: 1.05em;
+	vertical-align: -0.12em;
+}
+
+th x-icon,
+td x-icon {
+	vertical-align: -0.18em;
+}
+
+x-icon[tone="ok"] {
+	color: var(--ok);
+}
+
+x-icon[tone="warn"] {
+	color: var(--warn);
+}
+
+x-icon[tone="err"] {
+	color: var(--err);
+}
+
+x-icon[tone="muted"] {
+	color: var(--muted);
+}
+
+x-icon[tone="accent"] {
+	color: var(--accent);
+}
+
+/* --------------------------------------------------------------- callouts -- */
+
+/*
+ * Boxes are boxes: one even 1px tinted border, a subtle tint and the same radius
+ * as every other box. Never a thicker coloured stripe down one side.
+ * The label row (kind icon + kind name) is built from both pseudo-elements, so
+ * authored markup stays a plain `aside` holding paragraphs.
+ */
+aside {
+	--callout: var(--accent);
+	--callout-icon: icon("information-circle");
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	column-gap: 6px;
+	row-gap: 4px;
+	margin: 1.25em auto;
+	padding: 12px 16px;
+	border: 1px solid color-mix(in srgb, var(--callout) 35%, var(--border));
+	border-radius: var(--radius);
+	background: color-mix(in srgb, var(--callout) 7%, var(--surface));
+}
+
+aside::before {
+	content: "";
+	grid-row: 1;
+	grid-column: 1;
+	align-self: center;
+	width: 1.05em;
+	height: 1.05em;
+	background-color: var(--callout);
+	-webkit-mask: var(--callout-icon) center / contain no-repeat;
+	mask: var(--callout-icon) center / contain no-repeat;
+}
+
+aside::after {
+	content: "Note";
+	grid-row: 1;
+	grid-column: 2;
+	font-size: 11px;
+	font-weight: 700;
+	line-height: 1.6;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--callout);
+}
+
+aside > * {
+	grid-column: 1 / -1;
+}
+
+aside > :first-child {
+	margin-top: 0;
+}
+
+aside > :last-child {
+	margin-bottom: 0;
+}
+
+aside.warn {
+	--callout: var(--warn);
+	--callout-icon: icon("exclamation-triangle");
+}
+
+aside.error {
+	--callout: var(--err);
+	--callout-icon: icon("x-circle");
+}
+
+aside.ok {
+	--callout: var(--ok);
+	--callout-icon: icon("check-circle");
+}
+
+aside.warn::after {
+	content: "Warning";
+}
+
+aside.error::after {
+	content: "Error";
+}
+
+aside.ok::after {
+	content: "OK";
+}
+
+/* ----------------------------------------------------------------- tables -- */
+
+table {
+	width: 100%;
+	margin: 1.5em auto;
+	border-collapse: collapse;
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	font-size: 14.5px;
+	line-height: 1.45;
+	overflow: hidden;
+}
+
+caption {
+	caption-side: top;
+	text-align: left;
+	padding: 0 0 8px;
+	color: var(--muted);
+	font-size: 13px;
+}
+
+thead th {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	background: var(--surface);
+	text-align: left;
+	font-weight: 620;
+	font-size: 13px;
+	letter-spacing: 0.01em;
+	color: var(--muted);
+	text-transform: none;
+	padding: 9px 12px;
+	border-bottom: 1px solid var(--border);
+	white-space: nowrap;
+}
+
+tbody td,
+tbody th {
+	padding: 8px 12px;
+	border-top: 1px solid var(--border);
+	vertical-align: top;
+	text-align: left;
+}
+
+tbody tr:nth-child(even) {
+	background: color-mix(in srgb, var(--surface) 55%, transparent);
+}
+
+tbody tr:hover {
+	background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+td.num,
+th.num {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+table.sortable thead th {
+	cursor: pointer;
+	user-select: none;
+}
+
+table.sortable thead th:hover {
+	color: var(--fg);
+}
+
+/*
+ * Sort indicator: a Heroicons chevron, painted as a mask so it follows the theme
+ * tokens (a CSS image cannot inherit currentColor). `tablesort` marks the sorted
+ * header with `aria-sort`; everything else gets the neutral up/down affordance.
+ */
+table.sortable thead th::after {
+	content: "";
+	display: inline-block;
+	width: 0.8em;
+	height: 0.8em;
+	margin-left: 0.35em;
+	vertical-align: -0.08em;
+	opacity: 0.4;
+	background-color: currentColor;
+	-webkit-mask: icon("chevron-up-down") center / contain no-repeat;
+	mask: icon("chevron-up-down") center / contain no-repeat;
+}
+
+table.sortable thead th:hover::after {
+	opacity: 0.75;
+}
+
+table.sortable thead th[aria-sort="ascending"]::after {
+	opacity: 1;
+	background-color: var(--accent);
+	-webkit-mask-image: icon("chevron-up");
+	mask-image: icon("chevron-up");
+}
+
+table.sortable thead th[aria-sort="descending"]::after {
+	opacity: 1;
+	background-color: var(--accent);
+	-webkit-mask-image: icon("chevron-down");
+	mask-image: icon("chevron-down");
+}
+
+/* ---------------------------------------------------------------- figures -- */
+
+figure {
+	margin: 1.5em auto;
+}
+
+figure img,
+figure svg,
+figure video {
+	display: block;
+	max-width: 100%;
+	height: auto;
+	border-radius: var(--radius);
+}
+
+figcaption {
+	margin-top: 8px;
+	font-size: 13px;
+	color: var(--muted);
+}
+
+img,
+video,
+svg {
+	max-width: 100%;
+}
+
+img {
+	height: auto;
+}
+
+/* ---------------------------------------------------------------- details -- */
+
+details {
+	margin: 1.25em auto;
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: color-mix(in srgb, var(--surface) 60%, transparent);
+	padding: 0 14px;
+}
+
+details > summary {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	cursor: pointer;
+	padding: 10px 0;
+	font-weight: 600;
+	list-style: none;
+}
+
+/* The native disclosure triangle is a glyph; use a chevron that rotates. */
+details > summary::-webkit-details-marker {
+	display: none;
+}
+
+details > summary::before {
+	content: "";
+	flex: none;
+	width: 1em;
+	height: 1em;
+	background-color: var(--muted);
+	-webkit-mask: icon("chevron-right") center / contain no-repeat;
+	mask: icon("chevron-right") center / contain no-repeat;
+	transition: transform 120ms ease;
+}
+
+details[open] > summary::before {
+	background-color: currentColor;
+	transform: rotate(90deg);
+}
+
+details[open] > summary {
+	border-bottom: 1px solid var(--border);
+	margin-bottom: 12px;
+}
+
+details > :last-child {
+	margin-bottom: 12px;
+}
+
+/* ------------------------------------------------------------------ math -- */
+
+.katex {
+	font-size: 1.06em;
+}
+
+.katex-display {
+	overflow-x: auto;
+	overflow-y: hidden;
+	padding: 2px 0 6px;
+}
+
+/* --------------------------------------------------------------- mermaid -- */
+
+pre.mermaid {
+	border: 0;
+	background: none;
+	padding: 0;
+	text-align: center;
+	color: var(--muted);
+}
+
+pre.mermaid[hidden] {
+	display: none;
+}
+
+.mermaid-figure {
+	margin: 1.5em auto;
+	text-align: center;
+	overflow-x: auto;
+}
+
+.mermaid-figure svg {
+	max-width: 100%;
+	height: auto;
+}
+
+/* ----------------------------------------------------------------- charts -- */
+
+x-chart {
+	display: block;
+	margin: 1.5em auto;
+}
+
+.x-chart-canvas {
+	width: 100%;
+}
+
+.x-chart-canvas .vega-embed {
+	width: 100%;
+}
+
+.x-chart-canvas .vega-embed > canvas,
+.x-chart-canvas .vega-embed > svg {
+	max-width: 100%;
+}
+
+/*
+ * vega-tooltip appends its element to document.body, so the global table rules
+ * would otherwise restyle it: the tooltip table is reset here.
+ */
+#vg-tooltip-element {
+	position: fixed;
+	top: 0;
+	left: 0;
+	z-index: 30;
+	visibility: hidden;
+	max-width: 320px;
+	padding: 8px 10px;
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--surface);
+	box-shadow: 0 6px 20px color-mix(in srgb, #000 18%, transparent);
+	color: var(--fg);
+	font-family: var(--font-sans);
+	font-size: 12.5px;
+	line-height: 1.4;
+	pointer-events: none;
+}
+
+#vg-tooltip-element.visible {
+	visibility: visible;
+}
+
+#vg-tooltip-element h2 {
+	margin: 0 0 5px;
+	font-size: 12.5px;
+	font-weight: 650;
+}
+
+#vg-tooltip-element table,
+#vg-tooltip-element table thead,
+#vg-tooltip-element table tbody {
+	width: auto;
+	margin: 0;
+	border: 0;
+	border-radius: 0;
+	font-size: 12.5px;
+	background: none;
+}
+
+#vg-tooltip-element table th,
+#vg-tooltip-element table td {
+	position: static;
+	padding: 1px 0;
+	border: 0;
+	background: none;
+	vertical-align: baseline;
+	white-space: nowrap;
+}
+
+#vg-tooltip-element table tr,
+#vg-tooltip-element tbody tr:nth-child(even),
+#vg-tooltip-element tbody tr:hover {
+	background: none;
+}
+
+#vg-tooltip-element table td.key {
+	max-width: 150px;
+	padding-right: 10px;
+	color: var(--muted);
+	text-align: right;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+#vg-tooltip-element table td.value {
+	font-variant-numeric: tabular-nums;
+}
+
+.x-error {
+	position: relative;
+	margin: 1.25em auto;
+	padding: 10px 14px 10px 36px;
+	border: 1px solid var(--err);
+	border-radius: var(--radius);
+	background: color-mix(in srgb, var(--err) 8%, var(--surface));
+	font-size: 13.5px;
+	color: var(--fg);
+	white-space: pre-wrap;
+	font-family: var(--font-mono);
+}
+
+.x-error::before {
+	content: "Render error: ";
+	color: var(--err);
+	font-weight: 700;
+}
+
+.x-error::after {
+	content: "";
+	position: absolute;
+	top: 11px;
+	left: 13px;
+	width: 1.15em;
+	height: 1.15em;
+	background-color: var(--err);
+	-webkit-mask: icon("x-circle") center / contain no-repeat;
+	mask: icon("x-circle") center / contain no-repeat;
+}
+
+/* ------------------------------------------------------------------ diffs -- */
+
+x-diff {
+	display: block;
+	margin: 1.5em auto;
+}
+
+/* One box per file; multi-file diffs stack. */
+.x-diff-view {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+/*
+ * @pierre/diffs renders each file into its own shadow root, so report.css
+ * cannot reach its tables, line-number gutters or token spans (leaking table
+ * rules are what broke the old gutters). These custom properties are the only
+ * seam: they inherit through the shadow boundary.
+ */
+.x-diff-file {
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	overflow: auto;
+	max-height: 720px;
+	--diffs-font-family: var(--font-mono);
+	--diffs-header-font-family: var(--font-sans);
+	--diffs-font-size: 12.5px;
+	--diffs-line-height: 20px;
+	--diffs-light-bg: var(--surface);
+	--diffs-dark-bg: var(--surface);
+	--diffs-light: var(--fg);
+	--diffs-dark: var(--fg);
+	--diffs-light-addition-color: var(--ok);
+	--diffs-light-deletion-color: var(--err);
+	--diffs-dark-addition-color: var(--ok);
+	--diffs-dark-deletion-color: var(--err);
+}
+
+x-diff script {
+	display: none;
+}
+
+/* ---------------------------------------------------------------- compares -- */
+
+x-compare {
+	display: block;
+	margin: 1.5em auto;
+}
+
+x-compare > img {
+	display: none;
+}
+
+.x-compare-view {
+	position: relative;
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	overflow: hidden;
+	background: var(--surface);
+}
+
+.x-compare-label {
+	position: absolute;
+	bottom: 8px;
+	z-index: 2;
+	padding: 2px 8px;
+	border-radius: 999px;
+	background: color-mix(in srgb, #000 62%, transparent);
+	color: #fff;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	pointer-events: none;
+}
+
+.x-compare-first .x-compare-label,
+.x-compare-view .x-compare-label.is-before {
+	left: 8px;
+}
+
+.x-compare-label.is-after {
+	right: 8px;
+}
+
+/* slider mode */
+.x-compare-view img-comparison-slider {
+	display: block;
+	width: 100%;
+	outline: none;
+}
+
+.x-compare-view img-comparison-slider img {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+/* side mode */
+.x-compare-side {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 2px;
+	background: var(--border);
+}
+
+.x-compare-side > figure {
+	position: relative;
+	display: flex;
+	align-items: center;
+	margin: 0;
+	padding-bottom: 36px;
+	background: var(--surface);
+}
+
+/* Images with different aspect ratios are shown whole, never cropped. */
+.x-compare-side img {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+/* overlay mode */
+.x-compare-overlay {
+	position: relative;
+	touch-action: none;
+	user-select: none;
+}
+
+.x-compare-overlay img {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+.x-compare-overlay .x-compare-top {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+	clip-path: inset(0 calc(100% - var(--x-compare-pos, 50%)) 0 0);
+}
+
+.x-compare-overlay .x-compare-top img {
+	width: 100%;
+}
+
+.x-compare-overlay .x-compare-handle {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: var(--x-compare-pos, 50%);
+	width: 2px;
+	margin-left: -1px;
+	background: #fff;
+	box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+	z-index: 3;
+	pointer-events: none;
+}
+
+.x-compare-overlay input[type="range"] {
+	position: absolute;
+	inset: 0;
+	z-index: 4;
+	margin: 0;
+	width: 100%;
+	height: 100%;
+	opacity: 0;
+	cursor: ew-resize;
+}
+
+@media (max-width: 640px) {
+	.x-compare-side {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* ------------------------------------------------------------------- grid -- */
+
+x-grid {
+	display: grid;
+	gap: 16px;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	margin: 1.5em auto;
+	align-items: stretch;
+}
+
+x-grid[cols="2"] {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+x-grid[cols="3"] {
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+x-grid[cols="4"] {
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 860px) {
+	x-grid[cols="3"],
+	x-grid[cols="4"] {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 560px) {
+	x-grid,
+	x-grid[cols="2"],
+	x-grid[cols="3"],
+	x-grid[cols="4"] {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+/* Metrics as grid cells shouldn't double the vertical rhythm. */
+x-grid > * {
+	height: 100%;
+	margin: 0;
+	max-width: none;
+}
+
+/* ------------------------------------------------------------------- tabs -- */
+
+x-tabs {
+	display: block;
+	margin: 1.5em auto;
+}
+
+.x-tabbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 2px;
+	border-bottom: 1px solid var(--border);
+	margin-bottom: 14px;
+}
+
+.x-tabbar button {
+	appearance: none;
+	font: inherit;
+	font-size: 14px;
+	font-weight: 550;
+	color: var(--muted);
+	background: none;
+	border: 0;
+	border-bottom: 2px solid transparent;
+	padding: 8px 12px;
+	margin-bottom: -1px;
+	cursor: pointer;
+	border-radius: 6px 6px 0 0;
+}
+
+.x-tabbar button:hover {
+	color: var(--fg);
+	background: var(--surface);
+}
+
+.x-tabbar button[aria-selected="true"] {
+	color: var(--fg);
+	border-bottom-color: var(--accent);
+}
+
+.x-tabbar button:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+x-tabs > section[hidden] {
+	display: none;
+}
+
+x-tabs > section > :first-child {
+	margin-top: 0;
+}
+
+/* ---------------------------------------------------------------- metrics -- */
+
+x-metric {
+	display: flex;
+	flex-direction: column;
+	padding: 14px 16px;
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--surface);
+}
+
+.x-metric-inner {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.x-metric-label {
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+.x-metric-value {
+	font-size: 26px;
+	font-weight: 650;
+	line-height: 1.15;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: -0.01em;
+}
+
+.x-metric-delta {
+	font-size: 13px;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	color: var(--muted);
+}
+
+.x-metric-delta::before {
+	content: "";
+	display: inline-block;
+	width: 0.9em;
+	height: 0.9em;
+	margin-right: 0.3em;
+	vertical-align: -0.1em;
+	background-color: currentColor;
+	-webkit-mask: icon("minus") center / contain no-repeat;
+	mask: icon("minus") center / contain no-repeat;
+}
+
+.x-metric-delta.is-good::before {
+	-webkit-mask-image: icon("arrow-trending-up");
+	mask-image: icon("arrow-trending-up");
+}
+
+.x-metric-delta.is-bad::before {
+	-webkit-mask-image: icon("arrow-trending-down");
+	mask-image: icon("arrow-trending-down");
+}
+
+.x-metric-delta.is-good {
+	color: var(--ok);
+}
+
+.x-metric-delta.is-bad {
+	color: var(--err);
+}
+
+.x-metric-delta.is-neutral {
+	color: var(--muted);
+}
+
+/* ------------------------------------------------------------------ print -- */
+
+@media print {
+	:root {
+		color-scheme: light;
+	}
+
+	body {
+		background: #fff;
+		color: #000;
+		font-size: 11.5pt;
+	}
+
+	.report-header {
+		padding-top: 0;
+		border-bottom: 0;
+	}
+
+	.report-meta {
+		margin-top: 4px;
+	}
+
+	a {
+		color: inherit;
+		text-decoration: underline;
+	}
+
+	a[href^="http"]::after {
+		content: " (" attr(href) ")";
+		font-size: 9pt;
+		color: #444;
+		word-break: break-all;
+	}
+
+	pre,
+	table,
+	figure,
+	aside,
+	x-diff,
+	x-chart,
+	x-grid,
+	x-tabs,
+	x-metric,
+	details {
+		break-inside: avoid;
+	}
+
+	h1,
+	h2,
+	h3 {
+		break-after: avoid;
+	}
+
+	thead th {
+		position: static;
+		background: #f2f2f2;
+	}
+
+	tr:nth-child(even) {
+		background: #fafafa;
+	}
+}

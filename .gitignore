@@ -1,0 +1,24 @@
+# secrets (ARTIFACTS_SESSION_TOKEN, ARTIFACTS_OWNER_SECRET, basic-auth creds)
+.env
+.env.*
+
+# agent scratch space + site-specific notes (never published)
+.omp/
+
+# local dev data (sqlite + assets)
+.data/
+
+# JS
+node_modules/
+dist/
+.svelte-kit/
+*.tsbuildinfo
+
+# Rust
+server/target/
+
+# editors / OS
+.idea/
+.vscode/
+.DS_Store
+*.log

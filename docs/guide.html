@@ -1,0 +1,298 @@
+---
+title: Writing reports
+description: The writing rules, every component with live examples, and the report:// workflow for publishing and editing artifacts reports.
+---
+<p>An artifacts report is an HTML fragment in a store your reader can open, share for seven days, and watch update live. You write source; the server adds the header, the revision and the theme; this page is the whole style guide.</p>
+
+<h2>Rules</h2>
+<ol>
+	<li><strong>Lead with the result.</strong> The first screen answers what happened and what the reader should do about it. Detail comes after.</li>
+	<li><strong>Every fact appears once.</strong> Do not repeat the description in the body; no recap, summary, "key takeaways" or conclusion. Never show the same data twice — not as table and chart, not as table and prose.</li>
+	<li><strong>Prefer visuals to paragraphs.</strong> Tables, charts, diffs and before/after images first; one visual per idea.</li>
+	<li><strong>Cut process.</strong> No "I first looked at…", no restating the task, no methodology unless it changes how far the result can be trusted, no hedging, no filler adjectives, no marketing tone.</li>
+	<li><strong>No footnotes.</strong> Cite sources as inline links next to the claim; mark uncertainty once, at the claim.</li>
+	<li><strong>No unicode symbols.</strong> Arrows, check marks, triangles, stars and emoji in text or attributes are rejected: write <code>&lt;x-icon name="check-circle"&gt;&lt;/x-icon&gt;</code> instead of a check mark (see Icons below). In math use <code>\to</code> and <code>\Rightarrow</code>.</li>
+	<li><strong>Numbers carry units and a baseline.</strong> Say what the number is compared against. Identifiers, paths and commands go in <code>&lt;code&gt;</code>.</li>
+	<li><strong>Shortest complete form.</strong> Detail that only some readers need goes in <code>&lt;details&gt;</code>.</li>
+	<li><strong>Edit in place.</strong> Rewrite the report; never append "Update:" sections. The header already shows the revision and time.</li>
+	<li><strong>Title</strong> is a specific noun phrase without the project name. <strong>Description</strong> is one or two sentences of scope plus outcome.</li>
+	<li><strong>Never write structure, styles or scripts for layout.</strong> Use the components below; they already handle theme, width and print.</li>
+</ol>
+
+<h2>Text and math</h2>
+<p>Write ordinary HTML: <code>p</code>, <code>h2</code>, <code>h3</code>, <code>ul</code>, <code>ol</code>, <code>table</code>, <code>aside</code>, <code>figure</code>, <code>details</code>, <code>blockquote</code>, <code>hr</code>. Inline code uses <code>&lt;code&gt;</code>. Inline math uses <code>$…$</code> or <code>\(…\)</code>; display math uses <code>$$…$$</code> or <code>\[…\]</code>.</p>
+<pre><code class="language-html">&lt;p&gt;Latency dropped to $p_{95} = 123\ \text{ms}$, a $4\%$ improvement.&lt;/p&gt;
+&lt;p&gt;$$\text{throughput} = \frac{N}{t}$$&lt;/p&gt;</code></pre>
+<p>Live: latency dropped to $p_{95} = 123\ \text{ms}$, a $4\%$ improvement.</p>
+<p>$$\text{throughput} = \frac{N}{t}$$</p>
+
+<h2>Icons</h2>
+<p><code>x-icon</code> renders a <a href="https://heroicons.com">Heroicons</a> v2 <strong>20/solid</strong> icon inline, in the current text colour. <code>name</code> is any 20/solid name (browse the set at heroicons.com); <code>tone</code> is <code>ok</code>, <code>warn</code>, <code>err</code>, <code>muted</code> or <code>accent</code>; <code>label</code> gives the icon an accessible name, without it the icon is decorative and hidden from screen readers. Icons scale with the text and sit on the baseline, so they work in prose, headings, table cells and list items.</p>
+<pre><code class="language-html">&lt;p&gt;Cache hit rate &lt;x-icon name="arrow-trending-up" tone="ok" label="improved"&gt;&lt;/x-icon&gt; 94%.&lt;/p&gt;
+&lt;h3&gt;&lt;x-icon name="check-circle" tone="ok"&gt;&lt;/x-icon&gt; All routes healthy&lt;/h3&gt;
+&lt;td&gt;&lt;x-icon name="x-circle" tone="err" label="failed"&gt;&lt;/x-icon&gt;&lt;/td&gt;</code></pre>
+<p>Live: cache hit rate <x-icon name="arrow-trending-up" tone="ok" label="improved"></x-icon> 94%, p95 <x-icon name="arrow-trending-down" tone="err" label="worse"></x-icon> 41 ms, deploy <x-icon name="check-circle" tone="ok"></x-icon> clean, rollback drill <x-icon name="exclamation-triangle" tone="warn"></x-icon> pending, build <x-icon name="information-circle" tone="accent"></x-icon> queued, notes <x-icon name="information-circle" tone="muted"></x-icon> muted.</p>
+<h3><x-icon name="rocket-launch" tone="accent"></x-icon> In a heading</h3>
+<table>
+	<thead>
+		<tr><th>Check</th><th>Result</th><th class="num">p95</th></tr>
+	</thead>
+	<tbody>
+		<tr><td>Cache warm</td><td><x-icon name="check-circle" tone="ok" label="passed"></x-icon></td><td class="num">41 ms</td></tr>
+		<tr><td>Rollback drill</td><td><x-icon name="x-circle" tone="err" label="failed"></x-icon></td><td class="num">123 ms</td></tr>
+		<tr><td>Index rebuild</td><td><x-icon name="exclamation-triangle" tone="warn" label="warning"></x-icon></td><td class="num">88 ms</td></tr>
+	</tbody>
+</table>
+
+<h2>Code</h2>
+<p>A <code>&lt;pre&gt;&lt;code class="language-xxx"&gt;</code> block is highlighted in both themes. Every grammar Shiki bundles works (about 220), plus their aliases: <code>sh</code>, <code>yml</code>, <code>ts</code>, <code>rs</code>, <code>py</code>, <code>dockerfile</code>. Only the languages a report uses are downloaded. An unknown name renders as plain text.</p>
+<pre><code class="language-html">&lt;pre&gt;&lt;code class="language-rust"&gt;fn main() {
+    println!("hello");
+}&lt;/code&gt;&lt;/pre&gt;</code></pre>
+<pre><code class="language-rust">fn main() {
+    println!("hello");
+}</code></pre>
+<pre><code class="language-sh">cargo run --release</code></pre>
+
+<h2>Diagrams</h2>
+<p><code>pre.mermaid</code> is rendered as a diagram in the current theme: flowcharts (with labelled edges and arrowheads), sequence, class, state, ER, gantt and pie charts. Write Mermaid source as usual, indented under the fence.</p>
+<pre><code class="language-html">&lt;pre class="mermaid"&gt;
+graph LR
+  A[report://] --&gt; B{valid?}
+  B --&gt;|yes| C[publish]
+  B --&gt;|no| D[422]
+&lt;/pre&gt;</code></pre>
+<pre class="mermaid">
+graph LR
+  A[report://] --&gt; B{valid?}
+  B --&gt;|yes| C[publish]
+  B --&gt;|no| D[422]
+</pre>
+
+<h2>Charts</h2>
+<p>An <code>x-chart</code> holds a Vega-Lite (or Vega) JSON spec in a <code>script</code> payload. Every Vega-Lite chart type works: line, multi-series line, area and stacked area, bar, grouped and stacked bar, scatter, heatmap, layered views, facets and interaction (brush, legend toggle, tooltips). Colours, axes and tooltips come from the report theme; add <code>tooltip</code> encodings to get hover values. Data can be inline in <code>data.values</code> or loaded from <code>data.url: "assets/name.csv"</code>. Expressions run in the interpreter, never with eval.</p>
+<pre><code class="language-html">&lt;x-chart&gt;
+  &lt;script type="application/json"&gt;
+  {
+    "data": {"values": [
+      {"day": "Mon", "p95": 132}, {"day": "Tue", "p95": 118},
+      {"day": "Wed", "p95": 121}, {"day": "Thu", "p95": 96}
+    ]},
+    "mark": {"type": "line", "point": true},
+    "encoding": {
+      "x": {"field": "day", "type": "ordinal", "sort": null},
+      "y": {"field": "p95", "type": "quantitative", "title": "p95 (ms)"},
+      "tooltip": [{"field": "day"}, {"field": "p95", "title": "p95 (ms)"}]
+    }
+  }
+  &lt;/script&gt;
+&lt;/x-chart&gt;</code></pre>
+<x-chart>
+	<script type="application/json">
+		{
+			"$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+			"data": {
+				"values": [
+					{ "day": "Mon", "p95": 132 },
+					{ "day": "Tue", "p95": 118 },
+					{ "day": "Wed", "p95": 121 },
+					{ "day": "Thu", "p95": 96 }
+				]
+			},
+			"mark": { "type": "line", "point": true },
+			"encoding": {
+				"x": { "field": "day", "type": "ordinal", "sort": null },
+				"y": { "field": "p95", "type": "quantitative", "title": "p95 (ms)" },
+				"tooltip": [
+					{ "field": "day", "type": "ordinal" },
+					{ "field": "p95", "type": "quantitative", "title": "p95 (ms)" }
+				]
+			}
+		}
+	</script>
+</x-chart>
+
+<p>Interactive: drag across the bars to brush a region; the legend and the brush drive the colour.</p>
+<x-chart>
+	<script type="application/json">
+		{
+			"$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+			"data": {
+				"values": [
+					{ "region": "eu", "p95": 96 },
+					{ "region": "us", "p95": 104 },
+					{ "region": "ap", "p95": 88 }
+				]
+			},
+			"params": [
+				{ "name": "brush", "select": { "type": "interval", "encodings": ["x"] } }
+			],
+			"mark": "bar",
+			"encoding": {
+				"x": { "field": "region", "type": "nominal" },
+				"y": { "field": "p95", "type": "quantitative", "title": "p95 (ms)" },
+				"color": {
+					"condition": { "param": "brush", "field": "region", "type": "nominal" },
+					"value": "lightgray"
+				}
+			}
+		}
+	</script>
+</x-chart>
+
+<h2>Diffs</h2>
+<p><code>x-diff</code> takes unified diff text in a <code>script type="text/plain"</code> payload: old and new line numbers, red deletions and green additions with word-level highlights, a file header with the change size and syntax highlighting. <code>mode="side"</code> is side by side; the default is line by line. Several files can follow each other in one payload. The language comes from each file name in the <code>---</code>/<code>+++</code> headers; <code>lang="rust"</code> forces one grammar for every file.</p>
+<pre><code class="language-html">&lt;x-diff mode="side" lang="rust"&gt;
+  &lt;script type="text/plain"&gt;
+--- a/src/app.rs
++++ b/src/app.rs
+@@ -1,2 +1,2 @@
+ fn main() {
+-    old();
++    new();
+ }
+--- a/web/api.ts
++++ b/web/api.ts
+@@ -1,1 +1,1 @@
+-export const url = "http://localhost";
++export const url = location.origin;
+&lt;/script&gt;
+&lt;/x-diff&gt;</code></pre>
+
+<x-diff mode="side" lang="rust">
+	<script type="text/plain">
+--- a/src/app.rs
++++ b/src/app.rs
+@@ -1,2 +1,2 @@
+ fn main() {
+-    old();
++    new();
+}
+--- a/web/api.ts
++++ b/web/api.ts
+@@ -1,1 +1,1 @@
+-export const url = "http://localhost";
++export const url = location.origin;
+	</script>
+</x-diff>
+
+<h2>Tables</h2>
+<p>Tables get zebra striping and a sticky header. Add <code>class="sortable"</code> for click-to-sort on any column: numbers, file sizes, ISO dates and text sort correctly, and the sorted column shows a chevron. Put <code>class="num"</code> on numeric cells to right-align them; a cell that should sort by another value can carry <code>data-sort="123"</code>.</p>
+<pre><code class="language-html">&lt;table class="sortable"&gt;
+  &lt;thead&gt;&lt;tr&gt;&lt;th&gt;Route&lt;/th&gt;&lt;th class="num"&gt;p95 (ms)&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;&lt;td&gt;/api/reports&lt;/td&gt;&lt;td class="num"&gt;123&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td&gt;/api/share&lt;/td&gt;&lt;td class="num"&gt;48&lt;/td&gt;&lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;</code></pre>
+<table class="sortable">
+	<thead>
+		<tr><th>Route</th><th class="num">p95 (ms)</th><th class="num">Errors</th></tr>
+	</thead>
+	<tbody>
+		<tr><td>/api/reports</td><td class="num">123</td><td class="num">0</td></tr>
+		<tr><td>/api/share</td><td class="num">48</td><td class="num">2</td></tr>
+		<tr><td>/api/text</td><td class="num">9</td><td class="num">0</td></tr>
+	</tbody>
+</table>
+
+<h2>Callouts</h2>
+<p><code>aside</code> is a callout: a tinted box with an even 1px border, a kind icon and a kind label. Classes <code>note</code> (default), <code>ok</code>, <code>warn</code> and <code>error</code> pick the colour, icon and label.</p>
+<pre><code class="language-html">&lt;aside class="warn"&gt;
+  &lt;p&gt;Share links expire after seven days.&lt;/p&gt;
+&lt;/aside&gt;</code></pre>
+<aside class="note">
+	<p>Publishing validates the document; a rejected write returns 422 with line numbers.</p>
+</aside>
+<aside class="ok">
+	<p>Every check passed: all 12 routes stayed below the 250 ms p95 budget.</p>
+</aside>
+<aside class="warn">
+	<p>Share links expire after seven days. There is no way to extend one.</p>
+</aside>
+<aside class="error">
+	<p>Validation rejected the last write: the body contained a unicode arrow.</p>
+</aside>
+
+<h2>Figures</h2>
+<p>A figure pairs an image with a caption. Images must be <code>assets/&lt;name&gt;</code> (uploaded with the <code>report_upload</code> tool) or a <code>data:</code> URI; external URLs are rejected.</p>
+<pre><code class="language-html">&lt;figure&gt;
+  &lt;img src="assets/graph.png" alt="Latency by region"&gt;
+  &lt;figcaption&gt;Latency by region, baseline is the previous release.&lt;/figcaption&gt;
+&lt;/figure&gt;</code></pre>
+<figure>
+	<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMjAiIGhlaWdodD0iMTgwIiB2aWV3Qm94PSIwIDAgMzIwIDE4MCI+PHJlY3Qgd2lkdGg9IjMyMCIgaGVpZ2h0PSIxODAiIGZpbGw9IiNkYmUzZWUiLz48dGV4dCB4PSIxNjAiIHk9IjUyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic3lzdGVtLXVpIiBmb250LXNpemU9IjE2IiBmaWxsPSIjM2Q0YjVjIj5iZWZvcmU8L3RleHQ+PGcgZmlsbD0iIzlhYThiYiI+PHJlY3QgeD0iNDAiIHk9IjEyMCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjMwIi8+PHJlY3QgeD0iMTAwIiB5PSIxMDAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI1MCIvPjxyZWN0IHg9IjE2MCIgeT0iODYiIHdpZHRoPSI0MCIgaGVpZ2h0PSI2NCIvPjxyZWN0IHg9IjIyMCIgeT0iMTEwIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiLz48L2c+PC9zdmc+" alt="A bar chart">
+	<figcaption>A rendered SVG in a figure; captions are muted and small.</figcaption>
+</figure>
+
+<h2>Details</h2>
+<p><code>details</code> folds detail that only some readers need.</p>
+<pre><code class="language-html">&lt;details&gt;
+  &lt;summary&gt;All 312 sample timings&lt;/summary&gt;
+  &lt;p&gt;…&lt;/p&gt;
+&lt;/details&gt;</code></pre>
+<details>
+	<summary>All 312 sample timings</summary>
+	<p>Folded content keeps the main line short. Put raw data, full logs or long derivations here.</p>
+</details>
+
+<h2>Grids</h2>
+<p><code>x-grid</code> lays children out in responsive columns: <code>cols="2"</code>, <code>"3"</code> or <code>"4"</code>, collapsing on narrow screens.</p>
+<pre><code class="language-html">&lt;x-grid cols="2"&gt;
+  &lt;figure&gt;…&lt;/figure&gt;
+  &lt;figure&gt;…&lt;/figure&gt;
+&lt;/x-grid&gt;</code></pre>
+<x-grid cols="2">
+	<x-metric label="p95 latency" value="123 ms" delta="-4% vs last week" trend="good"></x-metric>
+	<x-metric label="error rate" value="0.42%" delta="+0.1 pp" trend="bad"></x-metric>
+</x-grid>
+
+<h2>Metrics</h2>
+<p><code>x-metric</code> is a stat card: label, value, optional delta and a <code>trend</code> of <code>good</code>, <code>bad</code> or <code>neutral</code> (default).</p>
+<pre><code class="language-html">&lt;x-metric label="p95" value="123 ms" delta="-4%" trend="good"&gt;&lt;/x-metric&gt;</code></pre>
+<x-metric label="p95" value="123 ms" delta="-4% vs last week" trend="good"></x-metric>
+
+<h2>Tabs</h2>
+<p><code>x-tabs</code> turns <code>section title="…"</code> children into tabs. Use them for alternative views of the same object, not for sequential reading.</p>
+<pre><code class="language-html">&lt;x-tabs&gt;
+  &lt;section title="Summary"&gt;&lt;p&gt;…&lt;/p&gt;&lt;/section&gt;
+  &lt;section title="Raw"&gt;&lt;pre&gt;&lt;code&gt;…&lt;/code&gt;&lt;/pre&gt;&lt;/section&gt;
+&lt;/x-tabs&gt;</code></pre>
+<x-tabs>
+	<section title="Summary">
+		<p>Three of four routes improved; <code>/api/share</code> regressed by 2 ms.</p>
+	</section>
+	<section title="Raw">
+		<pre><code class="language-json">{ "p95_ms": 123, "errors": 0 }</code></pre>
+	</section>
+</x-tabs>
+
+<h2>Before and after</h2>
+<p><code>x-compare</code> takes two images (first is before) and <code>mode="slider"</code> (default), <code>"side"</code> or <code>"overlay"</code>. Labels come from <code>labels="Before|After"</code>.</p>
+<pre><code class="language-html">&lt;x-compare mode="slider" labels="Before|After"&gt;
+  &lt;img src="assets/before.png" alt=""&gt;
+  &lt;img src="assets/after.png" alt=""&gt;
+&lt;/x-compare&gt;</code></pre>
+<x-compare mode="slider" labels="Before|After">
+	<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMjAiIGhlaWdodD0iMTgwIiB2aWV3Qm94PSIwIDAgMzIwIDE4MCI+PHJlY3Qgd2lkdGg9IjMyMCIgaGVpZ2h0PSIxODAiIGZpbGw9IiNkYmUzZWUiLz48dGV4dCB4PSIxNjAiIHk9IjUyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic3lzdGVtLXVpIiBmb250LXNpemU9IjE2IiBmaWxsPSIjM2Q0YjVjIj5iZWZvcmU8L3RleHQ+PGcgZmlsbD0iIzlhYThiYiI+PHJlY3QgeD0iNDAiIHk9IjEyMCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjMwIi8+PHJlY3QgeD0iMTAwIiB5PSIxMDAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI1MCIvPjxyZWN0IHg9IjE2MCIgeT0iODYiIHdpZHRoPSI0MCIgaGVpZ2h0PSI2NCIvPjxyZWN0IHg9IjIyMCIgeT0iMTEwIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiLz48L2c+PC9zdmc+" alt="Before">
+	<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMjAiIGhlaWdodD0iMTgwIiB2aWV3Qm94PSIwIDAgMzIwIDE4MCI+PHJlY3Qgd2lkdGg9IjMyMCIgaGVpZ2h0PSIxODAiIGZpbGw9IiNkN2VjZDkiLz48dGV4dCB4PSIxNjAiIHk9IjUyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic3lzdGVtLXVpIiBmb250LXNpemU9IjE2IiBmaWxsPSIjMmY1ZDM4Ij5hZnRlcjwvdGV4dD48ZyBmaWxsPSIjNWFhMDZhIj48cmVjdCB4PSI0MCIgeT0iODYiIHdpZHRoPSI0MCIgaGVpZ2h0PSI2NCIvPjxyZWN0IHg9IjEwMCIgeT0iNzQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI3NiIvPjxyZWN0IHg9IjE2MCIgeT0iNjQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI4NiIvPjxyZWN0IHg9IjIyMCIgeT0iOTAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI2MCIvPjwvZz48L3N2Zz4=" alt="After">
+</x-compare>
+
+<h2>Publishing with report://</h2>
+<p>Reports live at <code>report://&lt;project&gt;/&lt;slug&gt;</code>; the project is normally the name of your working directory.</p>
+<ul>
+	<li><code>report://myproj/p95</code> reads the editable source of report <code>p95</code> in project <code>myproj</code>; <code>edit</code> and <code>write</code> work on the same URL.</li>
+	<li><code>report://myproj/p95.md</code> is the read-only text version, for cross-referencing.</li>
+	<li><code>report://list</code> lists the reports of the current project; <code>report://list?project=other</code> lists another project, <code>?project=*</code> all of them.</li>
+	<li><code>report://guide</code> always resolves to this page.</li>
+</ul>
+<p>Writing the same URL creates the report if it does not exist and replaces it if it does; the revision increments and every open viewer updates over the websocket. Use <code>edit</code> with hashline patches to change part of a document, and <code>write</code> to create or replace it whole. Both validate first: a rejection lists the problem and the line.</p>
+<pre><code class="language-html">---
+title: p95 latency after the cache change
+description: Cache hit rate went from 61% to 94%; p95 fell 123 ms to 41 ms with no error-rate change.
+---
+&lt;x-metric label="p95" value="41 ms" delta="-67%" trend="good"&gt;&lt;/x-metric&gt;</code></pre>
+<p>Images are uploaded with the <code>report_upload</code> tool, which stores them under the report's <code>assets/</code> directory and returns the <code>assets/&lt;name&gt;</code> path to reference from an <code>img</code>.</p>
+<aside class="note">
+	<p>The body is capped at 5 MiB. Inline <code>script</code> without <code>src</code> runs in the sandbox; external scripts, stylesheets, inline <code>style</code> attributes and remote images are rejected by validation.</p>
+</aside>

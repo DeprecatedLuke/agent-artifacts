@@ -1,0 +1,43 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: artifacts-basic-auth
+spec:
+  basicAuth:
+    secret: artifacts-auth
+---
+# Set only on responses that already passed basicAuth (or carried a valid
+# cookie): basicAuth answers 401 itself and never reaches this middleware, so
+# a 401 never sets the cookie. Path=/ is required by __Host-.
+# ${ARTIFACTS_SESSION_TOKEN} is substituted from .env by `task deploy`.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: artifacts-remember
+spec:
+  headers:
+    customResponseHeaders:
+      Set-Cookie: "__Host-artifacts=${ARTIFACTS_SESSION_TOKEN}; Path=/; Max-Age=34560000; Secure; HttpOnly; SameSite=Lax"
+---
+# Authenticated routes: prove ownership to the app with a shared secret the
+# browser cannot send itself (basicAuth responses are checked first by Traefik,
+# and any client-supplied copy is overwritten here).
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: artifacts-owner
+spec:
+  headers:
+    customRequestHeaders:
+      X-Artifacts-Owner: "${ARTIFACTS_OWNER_SECRET}"
+---
+# Public routes: strip any client-supplied X-Artifacts-Owner so share and
+# render paths can never be upgraded to owner access.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: artifacts-public
+spec:
+  headers:
+    customRequestHeaders:
+      X-Artifacts-Owner: ""

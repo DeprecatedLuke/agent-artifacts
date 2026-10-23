@@ -1,0 +1,47 @@
+{
+	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
+			"style": {
+				"noNonNullAssertion": "off",
+				"useConst": "error"
+			},
+			"suspicious": {
+				"noExplicitAny": "off"
+			}
+		}
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"indentWidth": 3,
+		"lineWidth": 120,
+		"lineEnding": "lf"
+	},
+	"javascript": {
+		"formatter": {
+			"semicolons": "always",
+			"quoteStyle": "double",
+			"trailingCommas": "all",
+			"bracketSpacing": true,
+			"arrowParentheses": "asNeeded"
+		}
+	},
+	"files": {
+		"includes": ["src/**/*.ts", "src/**/*.svelte", "src/**/*.css", "*.ts", "*.json", "!**/dist", "!**/node_modules"]
+	},
+	"overrides": [
+		{
+			"includes": ["**/*.svelte"],
+			"linter": {
+				"rules": {
+					"style": { "useConst": "off", "useImportType": "off" },
+					"correctness": { "noUnusedVariables": "off", "noUnusedImports": "off" }
+				}
+			}
+		}
+	],
+	"assist": { "actions": { "source": { "organizeImports": "on" } } }
+}

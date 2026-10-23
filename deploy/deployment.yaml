@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: artifacts
+  labels:
+    app: artifacts
+spec:
+  replicas: 1
+  # SQLite on an RWO volume: never two pods at once.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: artifacts
+  template:
+    metadata:
+      labels:
+        app: artifacts
+    spec:
+      imagePullSecrets:
+        - name: registry-credentials
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        # Makes the freshly provisioned local-path volume writable for the
+        # distroless nonroot user (65532).
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: artifacts
+          image: ${ARTIFACTS_REGISTRY}/artifacts:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: ARTIFACTS_BIND
+              value: 0.0.0.0:8080
+            - name: ARTIFACTS_DATA_DIR
+              value: /data
+            - name: ARTIFACTS_WEB_DIR
+              value: /app/web
+            - name: ARTIFACTS_RENDER_DIR
+              value: /app/render
+            - name: ARTIFACTS_GUIDE_PATH
+              value: /app/docs/guide.html
+            - name: ARTIFACTS_PUBLIC_URL
+              value: ${ARTIFACTS_PUBLIC_URL}
+            - name: ARTIFACTS_OWNER_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: artifacts-owner
+                  key: owner-secret
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            # readOnlyRootFilesystem: SQLite needs a writable temp dir.
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: artifacts-data
+        - name: tmp
+          emptyDir: {}

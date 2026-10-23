@@ -1,0 +1,14 @@
+# SQLite database, report assets and share/view-cap signing key live here.
+# local-path has reclaimPolicy Delete: deleting the PVC loses every report.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: artifacts-data
+  labels:
+    app: artifacts
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

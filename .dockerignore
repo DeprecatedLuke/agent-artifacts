@@ -1,0 +1,17 @@
+.git
+.gitignore
+.omp
+.data
+.env
+*.log
+**/node_modules
+**/dist
+**/target
+**/.svelte-kit
+deploy
+plugin
+Taskfile.yml
+AGENTS.md
+Dockerfile
+.dockerignore
+docker-compose.yml

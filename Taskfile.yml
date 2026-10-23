@@ -1,0 +1,216 @@
+version: "3"
+
+# Deploy + dev entry points for artifacts.
+#
+# Site values come from the environment (or .env, mode 600, gitignored):
+#   ARTIFACTS_REGISTRY      image registry, e.g. ghcr.io/you        (required for images)
+#   ARTIFACTS_HOST          public hostname, e.g. artifacts.example.com
+#   ARTIFACTS_PUBLIC_URL    https://<ARTIFACTS_HOST>
+#   ACME_EMAIL              Let's Encrypt contact address
+#   ARTIFACTS_KUBE_CONTEXT  kubectl context                        (default: current)
+#   ARTIFACTS_SESSION_TOKEN, ARTIFACTS_OWNER_SECRET,
+#   ARTIFACTS_BASIC_AUTH_USER, ARTIFACTS_BASIC_AUTH_PASSWORD       (secrets)
+# All of them are substituted into the rendered manifests by envsubst; the
+# explicit list keeps every other `$` in the manifests intact.
+vars:
+  REGISTRY: '{{.ARTIFACTS_REGISTRY}}'
+  IMAGE: artifacts
+  KUBE_CONTEXT: '{{.ARTIFACTS_KUBE_CONTEXT}}'
+  NAMESPACE: artifacts
+  PLATFORM: linux/amd64
+  ENVSUBST_VARS: >-
+    $ARTIFACTS_SESSION_TOKEN $ARTIFACTS_OWNER_SECRET $ARTIFACTS_HTPASSWD
+    $ARTIFACTS_HOST $ARTIFACTS_PUBLIC_URL $ARTIFACTS_REGISTRY $ACME_EMAIL
+  # Immutable tag: <git short sha>-<YYYYMMDD-HHMM> (override with TAG=...).
+  TAG_PREFIX:
+    sh: git rev-parse --short HEAD 2>/dev/null || printf 'nogit'
+
+dotenv: [".env"]
+
+tasks:
+  # ---------------------------------------------------------------------------
+  # dev
+  # ---------------------------------------------------------------------------
+  dev:
+    desc: Run render (watch), server (127.0.0.1:8787) and web (Vite 5173) together
+    deps:
+      - dev:render
+      - dev:server
+      - dev:web
+
+  dev:render:
+    desc: Build render/ on every change (runtime.js + report.css)
+    dir: render
+    cmds:
+      - bun run build --watch
+
+  dev:server:
+    desc: Run the axum server on 127.0.0.1:8787 (data in ./.data)
+    dir: server
+    cmds:
+      - >-
+        ARTIFACTS_BIND=127.0.0.1:8787 ARTIFACTS_DATA_DIR=../.data
+        ARTIFACTS_WEB_DIR=../web/dist ARTIFACTS_RENDER_DIR=../render/dist
+        ARTIFACTS_GUIDE_PATH=../docs/guide.html ARTIFACTS_PUBLIC_URL=http://localhost:5173
+        ARTIFACTS_OWNER_SECRET=dev cargo run
+
+  dev:web:
+    desc: Run the Vite dev server on http://localhost:5173 (proxies /api, /s, /c, /_render)
+    dir: web
+    cmds:
+      - bun run dev
+
+  # ---------------------------------------------------------------------------
+  # checks
+  # ---------------------------------------------------------------------------
+  check:
+    desc: Lint/typecheck render, web and plugin; fmt/clippy/test the server
+    cmds:
+      - cd render && bun run check
+      - cd web && bun run lint && bun run check
+      - cd plugin && bun run --if-present lint && bun run --if-present check
+      - cd server && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
+
+  # ---------------------------------------------------------------------------
+  # image
+  # ---------------------------------------------------------------------------
+  image:
+    desc: Build and push the linux/amd64 image with an immutable tag (default {{.TAG_PREFIX}}-<timestamp>)
+    preconditions:
+      - sh: '[ -n "{{.REGISTRY}}" ]'
+        msg: ARTIFACTS_REGISTRY is unset (e.g. ghcr.io/you)
+    vars:
+      TAG: '{{.TAG | default (printf "%s-%s" .TAG_PREFIX (now | date "20060102-1504"))}}'
+    cmds:
+      - docker buildx build --platform {{.PLATFORM}} --push -t {{.REGISTRY}}/{{.IMAGE}}:{{.TAG}} .
+      - 'printf "pushed %s/%s:%s\n" "{{.REGISTRY}}" "{{.IMAGE}}" "{{.TAG}}"'
+
+  pin:
+    desc: Pin the image tag in deploy/kustomization.yaml (task pin TAG=...)
+    requires:
+      vars: [TAG]
+    cmds:
+      - |
+        sed -i 's|^    newTag: .*|    newTag: "{{.TAG}}"|' deploy/kustomization.yaml
+        grep -A1 'name: .*/{{.IMAGE}}' deploy/kustomization.yaml
+
+  # ---------------------------------------------------------------------------
+  # deploy
+  # ---------------------------------------------------------------------------
+  apply:
+    desc: Render deploy/ and apply it to the cluster (htpasswd generated from .env)
+    preconditions: &secrets
+      - sh: '[ "${#ARTIFACTS_SESSION_TOKEN}" -ge 64 ]'
+        msg: ARTIFACTS_SESSION_TOKEN missing or short in .env (openssl rand -hex 32)
+      - sh: '[ "${#ARTIFACTS_OWNER_SECRET}" -ge 64 ]'
+        msg: ARTIFACTS_OWNER_SECRET missing or short in .env (openssl rand -hex 32)
+      - sh: '[ -n "${ARTIFACTS_BASIC_AUTH_USER:-}" ] && [ -n "${ARTIFACTS_BASIC_AUTH_PASSWORD:-}" ]'
+        msg: ARTIFACTS_BASIC_AUTH_USER / ARTIFACTS_BASIC_AUTH_PASSWORD missing in .env
+      - sh: '[ -n "${ARTIFACTS_HOST:-}" ] && [ -n "${ARTIFACTS_PUBLIC_URL:-}" ] && [ -n "${ACME_EMAIL:-}" ]'
+        msg: ARTIFACTS_HOST, ARTIFACTS_PUBLIC_URL and ACME_EMAIL must be set in .env
+    cmds:
+      - |
+        set -eu
+        # apr1 hash contains `$`, which envsubst leaves alone because it only
+        # substitutes the explicitly listed variable names.
+        export ARTIFACTS_HTPASSWD="${ARTIFACTS_BASIC_AUTH_USER}:$(openssl passwd -apr1 "$ARTIFACTS_BASIC_AUTH_PASSWORD")"
+        kubectl kustomize deploy \
+          | envsubst '{{.ENVSUBST_VARS}}' \
+          | kubectl apply --context={{.KUBE_CONTEXT}} -f -
+
+  deploy:
+    desc: Apply the manifests and wait for the rollout
+    cmds:
+      - task: apply
+      - kubectl rollout status deployment/{{.IMAGE}} -n {{.NAMESPACE}} --context={{.KUBE_CONTEXT}} --timeout=5m
+
+  release:
+    desc: Build+push a fresh image, pin it, deploy and wait
+    vars:
+      TAG: '{{.TAG | default (printf "%s-%s" .TAG_PREFIX (now | date "20060102-1504"))}}'
+    cmds:
+      - task: image
+        vars: { TAG: "{{.TAG}}" }
+      - task: pin
+        vars: { TAG: "{{.TAG}}" }
+      - task: deploy
+
+  # ---------------------------------------------------------------------------
+  # bootstrap
+  # ---------------------------------------------------------------------------
+  namespace:
+    desc: Create ns artifacts
+    cmds:
+      - kubectl apply --context={{.KUBE_CONTEXT}} -f deploy/namespace.yaml
+
+  secrets:
+    desc: Copy the registry pull secret and the DNS-01 API token secret into {{.NAMESPACE}}
+    deps:
+      - namespace
+    vars:
+      PULL_SECRET: '{{.PULL_SECRET | default "registry-credentials"}}'
+      DNS_SECRET: '{{.DNS_SECRET | default "cloudflare-api-token"}}'
+      SOURCE_NS: '{{.SOURCE_NS | default "default"}}'
+    cmds:
+      - >-
+        kubectl get secret {{.PULL_SECRET}} -n {{.SOURCE_NS}} --context={{.KUBE_CONTEXT}} -o json
+        | jq '.metadata |= (del(.uid, .resourceVersion, .creationTimestamp, .ownerReferences, .annotations, .managedFields) | .namespace = "{{.NAMESPACE}}")'
+        | kubectl apply --context={{.KUBE_CONTEXT}} -f -
+      - >-
+        kubectl get secret {{.DNS_SECRET}} -n {{.SOURCE_NS}} --context={{.KUBE_CONTEXT}} -o json
+        | jq '.metadata |= (del(.uid, .resourceVersion, .creationTimestamp, .ownerReferences, .annotations, .managedFields) | .namespace = "{{.NAMESPACE}}")'
+        | kubectl apply --context={{.KUBE_CONTEXT}} -f -
+
+  dns:
+    desc: Upsert a DNS-only A record for ARTIFACTS_HOST (Cloudflare; needs CF_API_TOKEN)
+    vars:
+      ZONE: '{{.ARTIFACTS_ZONE}}'
+      NAME: '{{.ARTIFACTS_HOST}}'
+      IP: '{{.ARTIFACTS_HOST_IP}}'
+    cmds:
+      - |
+        set -eu
+        : "${CF_API_TOKEN:?set CF_API_TOKEN (Zone:DNS:Edit)}"
+        : "${ARTIFACTS_ZONE:?set ARTIFACTS_ZONE}"
+        : "${ARTIFACTS_HOST_IP:?set ARTIFACTS_HOST_IP}"
+        api=https://api.cloudflare.com/client/v4
+        auth="Authorization: Bearer $CF_API_TOKEN"
+        zone=$(curl -fsS -H "$auth" "$api/zones?name={{.ZONE}}" | jq -r '.result[0].id // empty')
+        [ -n "$zone" ] || { printf 'zone %s not visible to the token\n' "{{.ZONE}}" >&2; exit 1; }
+        rec=$(curl -fsS -H "$auth" "$api/zones/$zone/dns_records?type=A&name={{.NAME}}")
+        id=$(printf '%s' "$rec" | jq -r '.result[0].id // empty')
+        body=$(jq -nc --arg n "{{.NAME}}" --arg c "{{.IP}}" \
+          '{type:"A", name:$n, content:$c, ttl:1, proxied:false}')
+        if [ -z "$id" ]; then
+          curl -fsS -X POST -H "$auth" -H 'Content-Type: application/json' \
+            --data "$body" "$api/zones/$zone/dns_records" >/dev/null
+          printf 'created A %s -> %s (proxied=false)\n' "{{.NAME}}" "{{.IP}}"
+        else
+          curl -fsS -X PATCH -H "$auth" -H 'Content-Type: application/json' \
+            --data "$body" "$api/zones/$zone/dns_records/$id" >/dev/null
+          printf 'updated A %s -> %s (proxied=false)\n' "{{.NAME}}" "{{.IP}}"
+        fi
+
+  # ---------------------------------------------------------------------------
+  # omp plugin
+  # ---------------------------------------------------------------------------
+  plugin:install:
+    desc: Install the omp plugin (bun install + omp plugin link; verified by the Plugin slice)
+    cmds:
+      - cd plugin && bun install && omp plugin link "$PWD"
+
+  plugin:login:
+    desc: Store ARTIFACTS_SESSION_TOKEN as the plugin `session` setting (never echoed)
+    preconditions:
+      - sh: '[ "${#ARTIFACTS_SESSION_TOKEN}" -ge 64 ]'
+        msg: ARTIFACTS_SESSION_TOKEN missing or short in .env
+    cmds:
+      - |
+        set -eu
+        set -a; . ./.env; set +a
+        omp plugin config set artifacts session "$ARTIFACTS_SESSION_TOKEN"
+
+  logs:
+    desc: Follow the server logs
+    cmds:
+      - kubectl logs -n {{.NAMESPACE}} --context={{.KUBE_CONTEXT}} deploy/{{.IMAGE}} -f

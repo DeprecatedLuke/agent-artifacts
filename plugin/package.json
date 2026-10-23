@@ -1,0 +1,38 @@
+{
+	"name": "artifacts",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"description": "omp plugin: publish and edit human-facing HTML reports through report:// URLs",
+	"scripts": {
+		"check": "tsc --noEmit",
+		"lint": "biome check .",
+		"fmt": "biome check --write ."
+	},
+	"omp": {
+		"name": "artifacts",
+		"version": "0.1.0",
+		"description": "Human-facing HTML reports: report:// read/write/edit, /artifacts login, report_upload",
+		"extensions": [
+			"./src/index.ts"
+		],
+		"settings": {
+			"url": {
+				"type": "string",
+				"description": "Base URL of the artifacts service",
+				"default": "http://localhost:8080"
+			},
+			"session": {
+				"type": "string",
+				"description": "Traefik remember-cookie value (set by /artifacts login)",
+				"secret": true
+			}
+		}
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.6.2",
+		"@types/bun": "^1.4.4",
+		"@types/node": "^26.6.5",
+		"typescript": "6.0.3"
+	}
+}

@@ -1,0 +1,124 @@
+# artifacts
+
+Self-hosted HTML report store. Reports live at `report://<project>/<slug>` for agents and at
+`https://<your-host>/r/<project>/<slug>` for humans; the deployment target is yours (this repo assumes a
+Traefik-fronted Kubernetes cluster, namespace `artifacts`).
+
+Agents publish and edit reports through the omp plugin (`report://<project>/<slug>`); the human browses
+them in a Svelte SPA with live websocket updates, split view, light/dark themes and 7-day share links.
+Reports are stored verbatim as source documents, rendered inside a sandboxed iframe, and can carry a set
+of interactive components (charts, diffs, before/after sliders, tabs, metrics).
+
+## Layout
+
+| Path | What |
+|---|---|
+| `server/` | Rust (axum + rusqlite) API, document renderer, websocket hub, static file server. Binary `artifacts`. |
+| `render/` | In-iframe runtime (`runtime.js`) + `report.css`. Built with Vite, served from `/_render/`. |
+| `web/` | Svelte 5 + Vite SPA (shell, share shell, split view, theme). |
+| `docs/guide.html` | The guide, seeded into the DB as report `artifacts/guide` on start. |
+| `plugin/` | omp plugin exposing `report://` URLs (hashline `edit` support). |
+| `deploy/` | Kustomize: namespace, PVC, Deployment, Service, Issuer, Certificate, Middlewares, IngressRoute, secret templates. |
+| `Dockerfile` | Multi-stage: bun builds `render/` + `web/`, Rust builds `server/`, distroless runtime. |
+
+## Dev loop
+
+```sh
+bun install            # once per JS package (render/, web/, plugin/)
+task dev               # render --watch, server on 127.0.0.1:8787, Vite on :5173
+```
+
+- **Vite (5173)** is the browser entry point. It proxies `/api` (including the websocket), `/s`, `/c` and
+  `/_render` to `127.0.0.1:8787` and injects `X-Artifacts-Owner: dev`, so the server accepts requests as
+  owner without Traefik.
+- **Server (8787)** runs with `ARTIFACTS_DATA_DIR=../.data` (local SQLite + assets) and
+  `ARTIFACTS_PUBLIC_URL=http://localhost:5173`.
+- Data written during dev is throwaway; delete `.data/` to reset (the share/view-cap signing key lives
+  there too).
+- `task check` runs render/web/plugin lint+typecheck and `cargo fmt --check`, `clippy -D warnings`,
+  `cargo test`.
+
+## Deploy flow
+
+Site values and secrets live in `.env` (mode 600, gitignored):
+
+| Variable | Meaning |
+|---|---|
+| `ARTIFACTS_HOST` | public hostname, e.g. `artifacts.example.com` |
+| `ARTIFACTS_PUBLIC_URL` | `https://$ARTIFACTS_HOST` |
+| `ARTIFACTS_REGISTRY` | image registry prefix, e.g. `ghcr.io/you` |
+| `ACME_EMAIL` | Let's Encrypt contact address |
+| `ARTIFACTS_KUBE_CONTEXT` | kubectl context to apply to |
+| `ARTIFACTS_SESSION_TOKEN` | remember-cookie token (32 random bytes, hex) |
+| `ARTIFACTS_OWNER_SECRET` | header the ingress stamps on authenticated requests |
+| `ARTIFACTS_BASIC_AUTH_USER`, `ARTIFACTS_BASIC_AUTH_PASSWORD` | login |
+
+```sh
+task secrets           # copy the pull secret + DNS-01 token secret into the namespace
+task release           # image -> pin -> apply -> rollout status   (one-shot deploy)
+task image             # buildx --platform linux/amd64 --push, tag <sha>-<YYYYMMDD-HHMM>
+task pin TAG=<tag>     # only rewrite deploy/kustomization.yaml images.newTag
+task deploy            # apply rendered manifests, wait for rollout
+task apply             # apply only
+task dns               # upsert the DNS-only A record for ARTIFACTS_HOST, idempotent
+task logs              # follow server logs
+task plugin:install    # bun install in plugin/ + `omp plugin link`
+task plugin:login      # store ARTIFACTS_SESSION_TOKEN as the plugin `session` setting
+```
+
+`task apply`/`deploy` render `deploy/` with `kubectl kustomize`, substitute exactly
+`$ARTIFACTS_SESSION_TOKEN $ARTIFACTS_OWNER_SECRET $ARTIFACTS_HTPASSWD $ARTIFACTS_HOST $ARTIFACTS_PUBLIC_URL
+$ARTIFACTS_REGISTRY $ACME_EMAIL` via `envsubst` (the htpasswd line is generated from `.env` with
+`openssl passwd -apr1`), then `kubectl apply --context $ARTIFACTS_KUBE_CONTEXT -f -`. The explicit variable
+list keeps unrelated `$` text (e.g. the `$apr1$` salt) intact. `task secrets` copies the image-pull secret
+and the DNS-01 API token secret into the namespace from `SOURCE_NS`.
+
+Image tags are immutable; `deploy/kustomization.yaml` pins the tag (`images.newTag`). Rollback = `task pin`
+with an older tag, then `task deploy`. The Deployment uses `Recreate` (SQLite on an RWO volume → never two
+pods), runs as nonroot 65532 with a read-only root filesystem and `fsGroup: 65532` so `/data` is writable.
+
+## Auth model
+
+Traefik does all user auth; the app never authenticates users, and **the app never sets cookies**.
+
+- `artifacts-basic-auth` (basic auth, Secret `artifacts-auth`) is the login.
+- `artifacts-remember` sets `Set-Cookie: __Host-artifacts=<ARTIFACTS_SESSION_TOKEN>; Path=/; Max-Age=34560000;
+  Secure; HttpOnly; SameSite=Lax` on successful (non-401) responses, refreshing the 400-day cookie.
+- `artifacts-owner` sets the request header `X-Artifacts-Owner: <ARTIFACTS_OWNER_SECRET>` on authenticated
+  routes; the server requires a constant-time match for `/api/*` and the SPA shell.
+- `artifacts-public` deletes `X-Artifacts-Owner` on public routes.
+
+IngressRoute priorities:
+
+| Priority | Match | Middlewares |
+|---|---|---|
+| 100 | `/s/`, `/c/`, `/_render/`, `/assets/`, `/favicon.svg`, `/healthz` | `artifacts-public` only |
+| 50 | `Host(...)` + remember cookie | `artifacts-owner`, `artifacts-remember` |
+| 10 | `Host($ARTIFACTS_HOST)` catch-all | `artifacts-basic-auth`, `artifacts-owner`, `artifacts-remember` |
+
+**Two hard rules**
+
+1. **Never add `artifacts-remember` (or basic auth) to the priority-100 public route.** It would hand the
+   session cookie to any anonymous visitor of a share link.
+2. **The application must never set cookies.** Cookie handling is Traefik-only; an app-set `Set-Cookie` on
+   a public route would defeat rule 1.
+
+Websockets (`/api/ws`, `/s/:token/ws`) need no special Traefik config; they pass through the same routes.
+
+## DNS and TLS
+
+- Point `ARTIFACTS_HOST` at the ingress with a **DNS-only** A record (`proxied=false` if Cloudflare: the
+  proxy would need the origin certificate to match). `task dns` upserts it when `ARTIFACTS_ZONE` and
+  `ARTIFACTS_HOST_IP` are set and `CF_API_TOKEN` is exported.
+- Certificates: cert-manager Issuer `letsencrypt-dns` (Cloudflare DNS-01, Secret `cloudflare-api-token`)
+  issues `artifacts-tls` for `${ARTIFACTS_HOST}`. DNS-01 is used because a cluster that redirects HTTP to
+  HTTPS breaks HTTP-01.
+- Site-specific notes for the reference deployment live in `.omp/knowledge/` (gitignored).
+
+## Token rotation (logout everywhere)
+
+Rotating `ARTIFACTS_SESSION_TOKEN` in `.env` and running `task deploy` invalidates the remember cookie for
+every browser and for the omp plugin (the cookie no longer matches the prio-50 route → basic auth again).
+Re-run `task plugin:login` afterwards to store the new token for the plugin. Rotating
+`ARTIFACTS_OWNER_SECRET` also requires `task deploy` and logs nobody out, but any non-Traefik caller using
+the old owner header starts failing.
