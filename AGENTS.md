@@ -48,7 +48,8 @@ Site values and secrets live in `.env` (mode 600, gitignored):
 | `ARTIFACTS_PUBLIC_URL` | `https://$ARTIFACTS_HOST` |
 | `ARTIFACTS_REGISTRY` | image registry prefix, e.g. `ghcr.io/you` |
 | `ACME_EMAIL` | Let's Encrypt contact address |
-| `ARTIFACTS_KUBE_CONTEXT` | kubectl context to apply to |
+| `ARTIFACTS_KUBE_CONTEXT` | kubectl context to apply to (empty = current) |
+| `ARTIFACTS_PULL_SECRET` | image pull Secret in the namespace (default `registry-credentials`) |
 | `ARTIFACTS_SESSION_TOKEN` | remember-cookie token (32 random bytes, hex) |
 | `ARTIFACTS_OWNER_SECRET` | header the ingress stamps on authenticated requests |
 | `ARTIFACTS_BASIC_AUTH_USER`, `ARTIFACTS_BASIC_AUTH_PASSWORD` | login |
@@ -68,12 +69,14 @@ task plugin:login      # store ARTIFACTS_SESSION_TOKEN as the plugin `session` s
 
 `task apply`/`deploy` render `deploy/` with `kubectl kustomize`, substitute exactly
 `$ARTIFACTS_SESSION_TOKEN $ARTIFACTS_OWNER_SECRET $ARTIFACTS_HTPASSWD $ARTIFACTS_HOST $ARTIFACTS_PUBLIC_URL
-$ARTIFACTS_REGISTRY $ACME_EMAIL` via `envsubst` (the htpasswd line is generated from `.env` with
-`openssl passwd -apr1`), then `kubectl apply --context $ARTIFACTS_KUBE_CONTEXT -f -`. The explicit variable
-list keeps unrelated `$` text (e.g. the `$apr1$` salt) intact. `task secrets` copies the image-pull secret
-and the DNS-01 API token secret into the namespace from `SOURCE_NS`.
+$ARTIFACTS_REGISTRY $ARTIFACTS_PULL_SECRET $ACME_EMAIL` via `envsubst` (the htpasswd line is generated from
+`.env` with `openssl passwd -apr1`), then `kubectl apply --context $ARTIFACTS_KUBE_CONTEXT -f -`. The explicit
+variable list keeps unrelated `$` text (e.g. the `$apr1$` salt) intact. `task secrets` copies the image-pull
+secret (`ARTIFACTS_PULL_SECRET`) and the DNS-01 API token secret into the namespace from `SOURCE_NS`.
 
-Image tags are immutable; `deploy/kustomization.yaml` pins the tag (`images.newTag`). Rollback = `task pin`
+The Deployment's `image: artifacts` is a placeholder; `deploy/kustomization.yaml` rewrites it to
+`${ARTIFACTS_REGISTRY}/artifacts:<newTag>` (kustomize cannot match an image name that contains `${…}`).
+Image tags are immutable; `images.newTag` is the pin. Rollback = `task pin`
 with an older tag, then `task deploy`. The Deployment uses `Recreate` (SQLite on an RWO volume → never two
 pods), runs as nonroot 65532 with a read-only root filesystem and `fsGroup: 65532` so `/data` is writable.
 

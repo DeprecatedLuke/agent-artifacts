@@ -8,6 +8,7 @@ version: "3"
 #   ARTIFACTS_PUBLIC_URL    https://<ARTIFACTS_HOST>
 #   ACME_EMAIL              Let's Encrypt contact address
 #   ARTIFACTS_KUBE_CONTEXT  kubectl context                        (default: current)
+#   ARTIFACTS_PULL_SECRET   image pull Secret in the namespace     (default: registry-credentials)
 #   ARTIFACTS_SESSION_TOKEN, ARTIFACTS_OWNER_SECRET,
 #   ARTIFACTS_BASIC_AUTH_USER, ARTIFACTS_BASIC_AUTH_PASSWORD       (secrets)
 # All of them are substituted into the rendered manifests by envsubst; the
@@ -16,11 +17,12 @@ vars:
   REGISTRY: '{{.ARTIFACTS_REGISTRY}}'
   IMAGE: artifacts
   KUBE_CONTEXT: '{{.ARTIFACTS_KUBE_CONTEXT}}'
+  PULL_SECRET: '{{.ARTIFACTS_PULL_SECRET | default "registry-credentials"}}'
   NAMESPACE: artifacts
   PLATFORM: linux/amd64
   ENVSUBST_VARS: >-
     $ARTIFACTS_SESSION_TOKEN $ARTIFACTS_OWNER_SECRET $ARTIFACTS_HTPASSWD
-    $ARTIFACTS_HOST $ARTIFACTS_PUBLIC_URL $ARTIFACTS_REGISTRY $ACME_EMAIL
+    $ARTIFACTS_HOST $ARTIFACTS_PUBLIC_URL $ARTIFACTS_REGISTRY $ARTIFACTS_PULL_SECRET $ACME_EMAIL
   # Immutable tag: <git short sha>-<YYYYMMDD-HHMM> (override with TAG=...).
   TAG_PREFIX:
     sh: git rev-parse --short HEAD 2>/dev/null || printf 'nogit'
@@ -92,7 +94,7 @@ tasks:
     cmds:
       - |
         sed -i 's|^    newTag: .*|    newTag: "{{.TAG}}"|' deploy/kustomization.yaml
-        grep -A1 'name: .*/{{.IMAGE}}' deploy/kustomization.yaml
+        grep -A2 '^  - name: {{.IMAGE}}$' deploy/kustomization.yaml
 
   # ---------------------------------------------------------------------------
   # deploy
@@ -114,6 +116,7 @@ tasks:
         # apr1 hash contains `$`, which envsubst leaves alone because it only
         # substitutes the explicitly listed variable names.
         export ARTIFACTS_HTPASSWD="${ARTIFACTS_BASIC_AUTH_USER}:$(openssl passwd -apr1 "$ARTIFACTS_BASIC_AUTH_PASSWORD")"
+        export ARTIFACTS_PULL_SECRET="{{.PULL_SECRET}}"
         kubectl kustomize deploy \
           | envsubst '{{.ENVSUBST_VARS}}' \
           | kubectl apply --context={{.KUBE_CONTEXT}} -f -
@@ -148,7 +151,6 @@ tasks:
     deps:
       - namespace
     vars:
-      PULL_SECRET: '{{.PULL_SECRET | default "registry-credentials"}}'
       DNS_SECRET: '{{.DNS_SECRET | default "cloudflare-api-token"}}'
       SOURCE_NS: '{{.SOURCE_NS | default "default"}}'
     cmds:

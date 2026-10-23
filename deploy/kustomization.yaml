@@ -12,5 +12,6 @@ resources:
   - middlewares.yaml
   - ingressroute.yaml
 images:
-  - name: ${ARTIFACTS_REGISTRY}/artifacts
+  - name: artifacts
+    newName: ${ARTIFACTS_REGISTRY}/artifacts
     newTag: "60acb6b-20261023-0838"

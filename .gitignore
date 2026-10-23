@@ -1,6 +1,7 @@
 # secrets (ARTIFACTS_SESSION_TOKEN, ARTIFACTS_OWNER_SECRET, basic-auth creds)
 .env
 .env.*
+!.env.example
 
 # agent scratch space + site-specific notes (never published)
 .omp/
