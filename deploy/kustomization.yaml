@@ -14,4 +14,4 @@ resources:
 images:
   - name: artifacts
     newName: ${ARTIFACTS_REGISTRY}/artifacts
-    newTag: "60acb6b-20261023-0838"
+    newTag: "c14b21a-20261024-0945"
