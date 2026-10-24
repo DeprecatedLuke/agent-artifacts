@@ -152,6 +152,7 @@ function onMessage(event: MessageEvent): void {
 			{title}
 			src={activeSrc}
 			sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
+			allow="fullscreen"
 			referrerpolicy="no-referrer"
 		></iframe>
 	</div>

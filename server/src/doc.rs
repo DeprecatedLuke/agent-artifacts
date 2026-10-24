@@ -19,8 +19,8 @@ pub fn escape(s: &str) -> String {
     out
 }
 
-/// The `{BODY}` fragment: server-rendered header + the report fragment verbatim.
-/// Fragment for `/body` endpoints: header + fragment derived from the verbatim source.
+/// The `{BODY}` fragment: server-rendered header + the report fragment as served.
+/// Fragment for `/body` endpoints: header + fragment derived from the stored source.
 pub fn body_html_with_fragment(report: &ReportRow, fragment: &str) -> String {
     let description = if report.description.is_empty() {
         String::new()

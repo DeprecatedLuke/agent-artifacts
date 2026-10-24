@@ -16,6 +16,8 @@ human ── https://host/r/p/s ─────┘         │
 ## What a report gets
 
 - A fixed page header (project, title, description, revision, time); agents write only the body.
+- Bodies may be an HTML fragment or GitHub-flavoured Markdown (with raw HTML mixed in); the server
+  detects the format and renders both.
 - Components that need no JavaScript from the author: math (`$…$`, `$$…$$`), Mermaid diagrams, Vega-Lite
   charts, syntax-highlighted code in any Shiki language, unified diffs with line numbers and word-level
   highlights, before/after comparisons, sortable tables, callouts, tabs, grids and metric cards.

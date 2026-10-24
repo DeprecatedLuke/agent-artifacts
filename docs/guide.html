@@ -2,7 +2,7 @@
 title: Writing reports
 description: The writing rules, every component with live examples, and the report:// workflow for publishing and editing artifacts reports.
 ---
-<p>An artifacts report is an HTML fragment in a store your reader can open, share for seven days, and watch update live. You write source; the server adds the header, the revision and the theme; this page is the whole style guide.</p>
+<p>An artifacts report is an HTML fragment or a GitHub-flavoured Markdown document in a store your reader can open, share for seven days, and watch update live. You write source; the server adds the header, the revision and the theme; this page is the whole style guide.</p>
 
 <h2>Rules</h2>
 <ol>
@@ -18,6 +18,24 @@ description: The writing rules, every component with live examples, and the repo
 	<li><strong>Title</strong> is a specific noun phrase without the project name. <strong>Description</strong> is one or two sentences of scope plus outcome.</li>
 	<li><strong>Never write structure, styles or scripts for layout.</strong> Use the components below; they already handle theme, width and print.</li>
 </ol>
+
+<h2>Body format</h2>
+<p>The body is either an HTML fragment or GitHub-flavoured Markdown; the server tells them apart. Pick one per report and mix raw HTML into Markdown where a component is needed (<code>x-chart</code>, <code>x-diff</code>, <code>x-tabs</code>, <code>x-metric</code>, <code>x-icon</code>, <code>figure</code>, <code>details</code>). Markdown gives you headings, lists, pipe tables, blockquotes, links, images, inline code, fenced code with a language, and <code>```mermaid</code> fences that render as diagrams. Markdown headings shift down one level (<code>#</code> becomes <code>h2</code>) because the page title is the only <code>h1</code>. Every other rule applies unchanged: no banned glyphs outside code, no external image URLs, no <code>style</code> attributes and no forbidden elements in raw HTML.</p>
+<pre><code class="language-markdown">## Result
+
+32/32 checks PASS; no source file changed.
+
+| Case | Expected | Observed |
+|---|---|---|
+| staff self-escalation | 403 | 403 |
+
+`PATCH /v1/staff/users/&lt;staff-self&gt;` returned 403.
+
+```mermaid
+graph LR
+  A[source] --&gt; B[body] --&gt; C[render]
+```</code></pre>
+<p>A contents sidebar is built from the body's headings: the two highest levels present, at least three entries. It sits on the right of wide viewports and behind a toggle button on narrow ones, so never write a manual table of contents.</p>
 
 <h2>Text and math</h2>
 <p>Write ordinary HTML: <code>p</code>, <code>h2</code>, <code>h3</code>, <code>ul</code>, <code>ol</code>, <code>table</code>, <code>aside</code>, <code>figure</code>, <code>details</code>, <code>blockquote</code>, <code>hr</code>. Inline code uses <code>&lt;code&gt;</code>. Inline math uses <code>$…$</code> or <code>\(…\)</code>; display math uses <code>$$…$$</code> or <code>\[…\]</code>.</p>
@@ -55,7 +73,7 @@ description: The writing rules, every component with live examples, and the repo
 <pre><code class="language-sh">cargo run --release</code></pre>
 
 <h2>Diagrams</h2>
-<p><code>pre.mermaid</code> is rendered as a diagram in the current theme: flowcharts (with labelled edges and arrowheads), sequence, class, state, ER, gantt and pie charts. Write Mermaid source as usual, indented under the fence.</p>
+<p><code>pre.mermaid</code> is rendered as a diagram in the current theme: flowcharts (with labelled edges and arrowheads), sequence, class, state, ER, gantt and pie charts. Write Mermaid source as usual, indented under the fence. In Markdown a <code>```mermaid</code> fence is the same thing. Clicking the diagram opens it fullscreen.</p>
 <pre><code class="language-html">&lt;pre class="mermaid"&gt;
 graph LR
   A[report://] --&gt; B{valid?}
@@ -177,7 +195,7 @@ graph LR
 </x-diff>
 
 <h2>Tables</h2>
-<p>Tables get zebra striping and a sticky header. Add <code>class="sortable"</code> for click-to-sort on any column: numbers, file sizes, ISO dates and text sort correctly, and the sorted column shows a chevron. Put <code>class="num"</code> on numeric cells to right-align them; a cell that should sort by another value can carry <code>data-sort="123"</code>.</p>
+<p>Tables get zebra striping and a sticky header. Add <code>class="sortable"</code> for click-to-sort on any column: numbers, file sizes, ISO dates and text sort correctly, and the sorted column shows a chevron. Put <code>class="num"</code> on numeric cells to right-align them; a cell that should sort by another value can carry <code>data-sort="123"</code>. Every table carries an expand button that opens it fullscreen, a wide table takes the full page width rather than hiding columns, and inline code wraps inside cells, so no table needs trimming or splitting.</p>
 <pre><code class="language-html">&lt;table class="sortable"&gt;
   &lt;thead&gt;&lt;tr&gt;&lt;th&gt;Route&lt;/th&gt;&lt;th class="num"&gt;p95 (ms)&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
   &lt;tbody&gt;
@@ -215,7 +233,7 @@ graph LR
 </aside>
 
 <h2>Figures</h2>
-<p>A figure pairs an image with a caption. Images must be <code>assets/&lt;name&gt;</code> (uploaded with the <code>report_upload</code> tool) or a <code>data:</code> URI; external URLs are rejected.</p>
+<p>A figure pairs an image with a caption. Images must be <code>assets/&lt;name&gt;</code> (uploaded with the <code>report_upload</code> tool) or a <code>data:</code> URI; external URLs are rejected. Clicking an image opens it fullscreen.</p>
 <pre><code class="language-html">&lt;figure&gt;
   &lt;img src="assets/graph.png" alt="Latency by region"&gt;
   &lt;figcaption&gt;Latency by region, baseline is the previous release.&lt;/figcaption&gt;

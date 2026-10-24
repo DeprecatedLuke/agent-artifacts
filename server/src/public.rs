@@ -170,8 +170,8 @@ pub async fn cap_document(State(app): State<App>, Path(cap): Path<String>) -> Re
         Ok(r) => r,
         Err(m) => return missing_html(m),
     };
-    let fragment = source::body_of(&report.source);
-    let html = doc::document(&report, fragment, &cap, &app.version);
+    let fragment = source::fragment_html(source::body_of(&report.source));
+    let html = doc::document(&report, &fragment, &cap, &app.version);
 
     let mut resp = (StatusCode::OK, html).into_response();
     resp.headers_mut().insert(

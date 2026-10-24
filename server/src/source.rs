@@ -1,4 +1,10 @@
+use std::borrow::Cow;
+use std::ops::Range;
+
 use html5gum::{DefaultEmitter, Token, Tokenizer};
+use pulldown_cmark::{
+    CodeBlockKind, Event, HeadingLevel, LinkType, Options, Parser, Tag, TagEnd, html::push_html,
+};
 use serde::Serialize;
 use serde_yaml_ng::Value as Yaml;
 
@@ -48,6 +54,213 @@ pub fn body_of(source: &str) -> &str {
         offset += line.len();
     }
     ""
+}
+
+/// Elements that never take a closing tag, so they never open a subtree.
+const VOID_ELEMENTS: &[&str] = &[
+    "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source",
+    "track", "wbr",
+];
+
+/// A body is Markdown unless it is pure HTML: HTML bodies only carry whitespace between their
+/// top-level elements, Markdown bodies carry text of their own.
+pub fn is_markdown(body: &str) -> bool {
+    let mut emitter = DefaultEmitter::<usize>::new_with_span();
+    emitter.naively_switch_states(true);
+    let tokenizer = Tokenizer::new_with_emitter(body, emitter);
+    // Currently open elements, innermost last.
+    let mut open: Vec<String> = Vec::new();
+
+    for token in tokenizer.flatten() {
+        match token {
+            Token::StartTag(tag) => {
+                let name = String::from_utf8_lossy(&tag.name).to_ascii_lowercase();
+                if !tag.self_closing && !VOID_ELEMENTS.contains(&name.as_str()) {
+                    open.push(name);
+                }
+            }
+            Token::EndTag(tag) => {
+                let name = String::from_utf8_lossy(&tag.name).to_ascii_lowercase();
+                if let Some(pos) = open.iter().rposition(|element| *element == name) {
+                    open.truncate(pos);
+                }
+            }
+            Token::String(text) if open.is_empty() => {
+                let text = String::from_utf8_lossy(text.value.as_slice());
+                if !text.trim().is_empty() {
+                    return true;
+                }
+            }
+            _ => {}
+        }
+    }
+
+    false
+}
+
+/// GitHub-flavoured Markdown, minus math (the iframe renders `$...$` itself).
+fn markdown_options() -> Options {
+    Options::ENABLE_TABLES | Options::ENABLE_STRIKETHROUGH | Options::ENABLE_TASKLISTS
+}
+
+/// The HTML fragment to serve for a stored body: HTML bodies unchanged, Markdown converted.
+pub fn fragment_html(body: &str) -> Cow<'_, str> {
+    if !is_markdown(body) {
+        return Cow::Borrowed(body);
+    }
+    Cow::Owned(markdown_to_html(body))
+}
+
+fn next_heading_level(level: HeadingLevel) -> HeadingLevel {
+    match level {
+        HeadingLevel::H1 => HeadingLevel::H2,
+        HeadingLevel::H2 => HeadingLevel::H3,
+        HeadingLevel::H3 => HeadingLevel::H4,
+        HeadingLevel::H4 => HeadingLevel::H5,
+        HeadingLevel::H5 | HeadingLevel::H6 => HeadingLevel::H6,
+    }
+}
+
+fn escape_text(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for c in text.chars() {
+        match c {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            _ => out.push(c),
+        }
+    }
+    out
+}
+
+fn markdown_to_html(body: &str) -> String {
+    let options = markdown_options();
+    // The page title is the document's only `h1`, so Markdown headings shift down one level.
+    let demote = Parser::new_ext(body, options).any(|event| {
+        matches!(
+            event,
+            Event::Start(Tag::Heading {
+                level: HeadingLevel::H1,
+                ..
+            })
+        )
+    });
+
+    let mut mermaid: Option<String> = None;
+    let mut events: Vec<Event> = Vec::with_capacity(body.len() / 8 + 8);
+    for event in Parser::new_ext(body, options) {
+        match event {
+            Event::Start(Tag::CodeBlock(CodeBlockKind::Fenced(info)))
+                if info.split_whitespace().next() == Some("mermaid") =>
+            {
+                mermaid = Some(String::new());
+            }
+            Event::Text(text) => match mermaid.as_mut() {
+                Some(source) => source.push_str(&text),
+                None => events.push(Event::Text(text)),
+            },
+            Event::End(TagEnd::CodeBlock) if mermaid.is_some() => {
+                let source = escape_text(&mermaid.take().unwrap_or_default());
+                events.push(Event::Html(
+                    format!("<pre class=\"mermaid\">{source}</pre>").into(),
+                ));
+            }
+            Event::Start(Tag::Heading {
+                level,
+                id,
+                classes,
+                attrs,
+            }) if demote => events.push(Event::Start(Tag::Heading {
+                level: next_heading_level(level),
+                id,
+                classes,
+                attrs,
+            })),
+            Event::End(TagEnd::Heading(level)) if demote => {
+                events.push(Event::End(TagEnd::Heading(next_heading_level(level))));
+            }
+            event => events.push(event),
+        }
+    }
+
+    let mut out = String::with_capacity(body.len() * 3 / 2);
+    push_html(&mut out, events.into_iter());
+    out
+}
+
+/// ASCII punctuation a Markdown backslash escapes.
+const MARKDOWN_ESCAPABLE: &str = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+
+/// Blank out everything Markdown renders verbatim (`code`, code blocks, link destinations,
+/// backslash escapes) so the HTML pass sees the same text the browser will.
+fn mask_markdown(body: &str) -> String {
+    let source = body.as_bytes();
+    let mut ranges: Vec<Range<usize>> = Vec::new();
+
+    let mut at = 0usize;
+    while at + 1 < source.len() {
+        if source[at] == b'\\' && MARKDOWN_ESCAPABLE.as_bytes().contains(&source[at + 1]) {
+            ranges.push(at..at + 2);
+            at += 2;
+        } else {
+            at += 1;
+        }
+    }
+
+    let mut code_block_start: Option<usize> = None;
+    for (event, range) in Parser::new_ext(body, markdown_options()).into_offset_iter() {
+        match event {
+            // Inline code, backticks included.
+            Event::Code(_) => ranges.push(range),
+            Event::Start(Tag::CodeBlock(_)) => code_block_start = Some(range.start),
+            Event::End(TagEnd::CodeBlock) => {
+                if let Some(start) = code_block_start.take() {
+                    ranges.push(start..range.end);
+                }
+            }
+            // Link/image destinations are attribute values, not prose.
+            Event::Start(Tag::Link { link_type, .. } | Tag::Image { link_type, .. }) => {
+                match link_type {
+                    LinkType::Inline => {
+                        if let Some(pos) = body[range.clone()].rfind("](") {
+                            ranges.push(range.start + pos + 1..range.end);
+                        }
+                    }
+                    // Autolinks show their (external) URL.
+                    LinkType::Autolink | LinkType::Email => ranges.push(range),
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let mut bytes = source.to_vec();
+    for range in ranges {
+        for byte in &mut bytes[range] {
+            if *byte != b'\n' {
+                *byte = b' ';
+            }
+        }
+    }
+    String::from_utf8_lossy(&bytes).into_owned()
+}
+
+/// Problems only Markdown can have: an image pointing at an external URL.
+fn markdown_problems(body: &str, base_line: usize) -> Vec<Problem> {
+    let mut problems = Vec::new();
+    for (event, range) in Parser::new_ext(body, markdown_options()).into_offset_iter() {
+        if let Event::Start(Tag::Image { dest_url, .. }) = event
+            && is_external_url(&dest_url)
+        {
+            problems.push(Problem::at(
+                Some(line_at(body, base_line, range.start)),
+                "image URLs must point to `assets/...` or a `data:` URL, not an external URL",
+            ));
+        }
+    }
+    problems
 }
 
 /// Problem line for the first frontmatter key occurrence (1-based, full source).
@@ -304,6 +517,17 @@ fn push_glyph_problems(text: &str, first_line: usize, problems: &mut Vec<Problem
 }
 
 fn validate_body(body: &str, base_line: usize, icon_names: &icons::IconNames) -> Vec<Problem> {
+    if !is_markdown(body) {
+        return validate_markup(body, base_line, icon_names);
+    }
+    // Markdown: the HTML pass runs on a masked copy (same length and line breaks), so raw HTML
+    // inside the body is still checked while code spans, code blocks and link destinations are not.
+    let mut problems = validate_markup(&mask_markdown(body), base_line, icon_names);
+    problems.extend(markdown_problems(body, base_line));
+    problems
+}
+
+fn validate_markup(body: &str, base_line: usize, icon_names: &icons::IconNames) -> Vec<Problem> {
     let mut problems = Vec::new();
     // Currently open exempt subtrees, innermost last.
     let mut exempt: Vec<String> = Vec::new();

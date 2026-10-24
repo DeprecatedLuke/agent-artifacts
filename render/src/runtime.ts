@@ -1,4 +1,5 @@
 import { Idiomorph } from "idiomorph";
+import { enhanceAll, unenhanceAll } from "./enhance";
 import { renderAll, resetAll, themeAll } from "./pipeline";
 import type { Theme } from "./renderers/types";
 
@@ -50,7 +51,12 @@ window.addEventListener("message", event => {
 		explicitTheme = true;
 		theme = scheme;
 		document.documentElement.style.colorScheme = scheme;
-		enqueue(() => themeAll(document, theme));
+		// Mermaid rebuilds its figures for the new palette, so their viewer
+		// affordances have to be re-applied.
+		enqueue(async () => {
+			await themeAll(document, theme);
+			enhanceAll();
+		});
 		return;
 	}
 	if (data.type === "update" && typeof data.html === "string") {
@@ -64,10 +70,13 @@ async function applyUpdate(html: string, rev: unknown): Promise<void> {
 	const x = window.scrollX;
 	const y = window.scrollY;
 	// Put the authored markup back first, so idiomorph morphs raw HTML onto raw
-	// HTML instead of reconciling generated SVG/token spans.
+	// HTML instead of reconciling generated SVG/token spans, table wrappers or a
+	// contents sidebar that the new source does not contain.
+	unenhanceAll();
 	resetAll(document);
 	await Idiomorph.morph(document.body, html, { morphStyle: "innerHTML" });
 	await renderAll(document, theme);
+	enhanceAll();
 	formatTimes(document);
 	runInlineScripts(document);
 	window.scrollTo(x, y);
@@ -221,6 +230,8 @@ installInteractions();
 enqueue(async () => {
 	for (const script of document.querySelectorAll("script")) executed.add(script as HTMLScriptElement);
 	await renderAll(document, theme);
+	// After the renderers: Mermaid figures and tablesort must exist to be enhanced.
+	enhanceAll();
 	formatTimes(document);
 	post("ready", { rev: REV });
 });

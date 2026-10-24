@@ -220,7 +220,10 @@ pub async fn put_source(
         }
     };
 
-    let markdown = app.md.convert(&parsed.body).unwrap_or_default();
+    let markdown = app
+        .md
+        .convert(&source::fragment_html(&parsed.body))
+        .unwrap_or_default();
     let at = db::now();
     let args = (
         p.clone(),
@@ -345,8 +348,8 @@ pub async fn get_body(
 }
 
 pub fn body_response(row: &ReportRow) -> Response {
-    let fragment = source::body_of(&row.source);
-    let html = doc::body_html_with_fragment(row, fragment);
+    let fragment = source::fragment_html(source::body_of(&row.source));
+    let html = doc::body_html_with_fragment(row, &fragment);
     let mut resp = (StatusCode::OK, html).into_response();
     resp.headers_mut().insert(
         header::CONTENT_TYPE,

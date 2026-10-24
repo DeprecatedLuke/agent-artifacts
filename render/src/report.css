@@ -30,7 +30,14 @@
 	--font-sans: system-ui, sans-serif;
 	--font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 	--radius: 8px;
+	/* The text column every block centres in. */
 	--measure: 880px;
+	/* How far a table with many columns (or unfittable content) may grow. */
+	--wide-table: 1200px;
+	/* Contents sidebar: its column, and the gutter reserved on <body> for it. */
+	--toc-width: 200px;
+	--toc-gap: 24px;
+	--toc-reserve: calc(var(--toc-width) + var(--toc-gap));
 }
 
 *,
@@ -115,8 +122,10 @@ body {
 
 /*
  * Everything shares the text column, so nothing can sit out of bounds. Content
- * wider than the column (a fixed-width spec, a long table) scrolls inside its
- * own box instead of overflowing the page.
+ * wider than the column scrolls inside its own box instead of overflowing the
+ * page. This rule only applies before the runtime enhancement (a wrapped table
+ * is no longer a direct child): `enhance/tables.ts` then owns the layout, and
+ * the wrapper decides between widened, clipped and scrollable.
  */
 .report-body > table {
 	display: block;
@@ -545,6 +554,131 @@ table.sortable thead th[aria-sort="descending"]::after {
 	background-color: var(--accent);
 	-webkit-mask-image: icon("chevron-down");
 	mask-image: icon("chevron-down");
+}
+
+/*
+ * Runtime table layout (render/src/enhance/tables.ts).
+ *
+ * The wrapper owns the box and the expand button; the scroll box is the only
+ * element that clips. It is *not* a scroll container unless the content truly
+ * cannot fit, because a scroll container would become the sticky scrollport and
+ * `thead th` would stick to the table instead of to the top of the viewport.
+ */
+.report-table {
+	position: relative;
+	max-width: var(--measure);
+	margin: 1.5em auto;
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+}
+
+/*
+ * A table that needs the room keeps it: up to the wide max, never past the body
+ * content box. That box already has the contents gutter subtracted, so a wide
+ * table can never slide under the sidebar.
+ */
+.report-table.is-wide {
+	max-width: min(var(--wide-table), 100%);
+}
+
+.report-table-scroll {
+	border-radius: inherit;
+	overflow: clip;
+}
+
+.report-table.is-scroll > .report-table-scroll {
+	overflow-x: auto;
+	overflow-y: clip;
+}
+
+/* The wrapper draws the box now. */
+.report-table > .report-table-scroll > table {
+	width: 100%;
+	margin: 0;
+	border: 0;
+	border-radius: 0;
+	overflow: visible;
+}
+
+/* The expand button sits in the top-right corner: keep the last header clear. */
+.report-table thead tr:first-child th:last-child {
+	padding-right: 36px;
+}
+
+/*
+ * A path or a commit hash in a cell has to break: one unbreakable token is what
+ * used to push the interesting columns behind a scrollbar. `break-word`, not
+ * `anywhere`: it allows the break once a token overflows its line but leaves the
+ * column's min-content at the longest word, so the auto layout still gives short
+ * columns a readable width instead of collapsing them to one character per line.
+ * Prose words outside tables never break mid-word.
+ */
+td code,
+th code,
+.report-table code {
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+
+/*
+ * `anywhere` drops a cell's min-content to a single character, which lets the
+ * auto layout starve the column holding a long path; the floor keeps it readable
+ * without giving every numeric or icon column a minimum.
+ */
+td:has(code),
+th:has(code) {
+	min-width: 8em;
+}
+
+.report-table-expand {
+	position: absolute;
+	top: 6px;
+	right: 6px;
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	background: var(--bg);
+	color: var(--muted);
+	cursor: pointer;
+	opacity: 0;
+	transition: opacity 120ms ease;
+}
+
+/* Revealed on hover and whenever the table (or its button) has keyboard focus. */
+.report-table:hover .report-table-expand,
+.report-table:focus-within .report-table-expand {
+	opacity: 1;
+}
+
+.report-table-expand:hover {
+	color: var(--fg);
+}
+
+.report-table-expand:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+.report-table-expand::before {
+	content: "";
+	width: 14px;
+	height: 14px;
+	background-color: currentColor;
+	-webkit-mask: icon("arrows-pointing-out") center / contain no-repeat;
+	mask: icon("arrows-pointing-out") center / contain no-repeat;
+}
+
+/* No hover to reveal it with: the button is always visible. */
+@media (hover: none) {
+	.report-table-expand {
+		opacity: 1;
+	}
 }
 
 /* ---------------------------------------------------------------- figures -- */
@@ -1138,6 +1272,248 @@ x-metric {
 	color: var(--muted);
 }
 
+/* ----------------------------------------------------------------- viewer -- */
+
+/*
+ * One overlay serves images, diagrams and tables (render/src/enhance/viewer.ts).
+ * It goes element-fullscreen where the sandbox allows it and stays a fixed,
+ * viewport-covering panel where it does not, so both look identical.
+ */
+.report-viewer {
+	position: fixed;
+	inset: 0;
+	z-index: 60;
+	display: flex;
+	background: var(--bg);
+	color: var(--fg);
+}
+
+.report-viewer-stage {
+	display: flex;
+	flex: 1;
+	min-width: 0;
+	padding: 56px;
+	overflow: auto;
+}
+
+/*
+ * `margin: auto` centres the child, and resolves to 0 once the child is bigger
+ * than the stage (auto margins are dropped when free space is negative), so a
+ * large image stays scrollable from its top-left corner instead of being
+ * clipped by flex centring.
+ */
+.report-viewer-stage > * {
+	margin: auto;
+}
+
+.report-viewer-image {
+	max-width: 100%;
+	max-height: 100%;
+	cursor: zoom-in;
+}
+
+/* Natural size, panned by the stage's own scroll. */
+.report-viewer-image.is-natural {
+	max-width: none;
+	max-height: none;
+	cursor: zoom-out;
+}
+
+.report-viewer-diagram {
+	width: auto;
+	height: auto;
+	max-width: 100%;
+	max-height: 100%;
+}
+
+/* The moved table keeps its sticky header: the stage is its scrollport. `margin:
+ * auto` keeps it at its content height instead of being stretched by the flex
+ * stage (which would make every row absorb a share of the viewport height). */
+.report-viewer .report-viewer-table {
+	width: 100%;
+	margin: auto;
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	overflow: visible;
+}
+
+.report-viewer-close {
+	position: absolute;
+	top: 14px;
+	right: 14px;
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	padding: 0;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--surface);
+	color: var(--muted);
+	cursor: pointer;
+}
+
+.report-viewer-close:hover {
+	color: var(--fg);
+}
+
+.report-viewer-close:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+.report-viewer-close::before {
+	content: "";
+	width: 16px;
+	height: 16px;
+	background-color: currentColor;
+	-webkit-mask: icon("x-mark") center / contain no-repeat;
+	mask: icon("x-mark") center / contain no-repeat;
+}
+
+/* Nothing behind the viewer may scroll while it is open. */
+html.report-viewer-open,
+html.report-viewer-open body {
+	overflow: hidden;
+}
+
+/* Images and diagrams that the viewer can open. */
+.report-zoomable {
+	cursor: zoom-in;
+}
+
+.report-zoomable:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------- contents -- */
+
+/*
+ * Built from the body's headings (render/src/enhance/toc.ts). Above the wide
+ * breakpoint it is a fixed right column and the body reserves its gutter, so
+ * the header, the text column and the wide tables stay centred in what is left
+ * and never sit under it. Below it, it is a popover behind a toggle button.
+ */
+.report-toc,
+.report-toc-toggle {
+	display: none;
+}
+
+.report-toc-title {
+	margin: 0 0 8px;
+	font-size: 11px;
+	font-weight: 700;
+	line-height: 1.6;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+.report-toc-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.report-toc-item[data-level="2"] {
+	padding-left: 12px;
+}
+
+.report-toc-link {
+	display: block;
+	padding: 3px 8px;
+	border-left: 2px solid transparent;
+	color: var(--muted);
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.report-toc-link:hover,
+.report-toc-link:focus-visible {
+	color: var(--fg);
+}
+
+.report-toc-link.is-active {
+	border-left-color: var(--accent);
+	color: var(--accent);
+	font-weight: 550;
+}
+
+@media (min-width: 1200px) {
+	/* Reserve the sidebar's column out of the page, not out of the text column. */
+	html.report-has-toc body {
+		padding-right: var(--toc-reserve);
+	}
+
+	.report-toc {
+		display: block;
+		position: fixed;
+		top: 40px;
+		right: var(--toc-gap);
+		width: var(--toc-width);
+		max-height: calc(100vh - 80px);
+		overflow: auto;
+		z-index: 20;
+	}
+}
+
+@media (max-width: 1199px) {
+	html.report-has-toc .report-toc-toggle {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		position: fixed;
+		top: 12px;
+		right: 12px;
+		z-index: 30;
+		width: 32px;
+		height: 32px;
+		padding: 0;
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		background: color-mix(in srgb, var(--bg) 88%, transparent);
+		color: var(--muted);
+		cursor: pointer;
+	}
+
+	html.report-has-toc .report-toc-toggle:hover {
+		color: var(--fg);
+	}
+
+	html.report-has-toc .report-toc-toggle:focus-visible {
+		outline: 2px solid var(--accent);
+		outline-offset: -2px;
+	}
+
+	.report-toc-toggle::before {
+		content: "";
+		width: 16px;
+		height: 16px;
+		background-color: currentColor;
+		-webkit-mask: icon("list-bullet") center / contain no-repeat;
+		mask: icon("list-bullet") center / contain no-repeat;
+	}
+
+	.report-toc.is-open {
+		display: block;
+		position: fixed;
+		top: 52px;
+		right: 12px;
+		z-index: 30;
+		width: 240px;
+		max-height: min(70vh, 480px);
+		overflow: auto;
+		padding: 12px;
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		background: var(--bg);
+		box-shadow: 0 12px 32px color-mix(in srgb, #000 18%, transparent);
+	}
+}
+
 /* ------------------------------------------------------------------ print -- */
 
 @media print {
@@ -1198,5 +1574,25 @@ x-metric {
 
 	tr:nth-child(even) {
 		background: #fafafa;
+	}
+
+	/* No sidebar, no viewer, no expand affordance on paper. */
+	.report-toc,
+	.report-toc-toggle,
+	.report-table-expand,
+	.report-viewer {
+		display: none !important;
+	}
+
+	html.report-has-toc body {
+		padding-right: 0;
+	}
+
+	/* A table is never clipped or scrolled on paper: it is laid out whole. */
+	.report-table,
+	.report-table-scroll {
+		max-width: none;
+		overflow: visible !important;
+		break-inside: auto;
 	}
 }

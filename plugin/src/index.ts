@@ -96,7 +96,7 @@ function systemPromptSection(url: string, project: string, loggedIn: boolean): s
 	const lines = [
 		"## artifacts (human-facing reports)",
 		`<${url}> holds HTML reports the human reads: publish findings there instead of dumping long output into chat.`,
-		`- Create/overwrite: \`write report://<project>/<slug>\` — project is the repo dir name (here \`${project}\`); body = HTML fragment after a \`---\` frontmatter block with \`title\` (and optional \`description\`).`,
+		`- Create/overwrite: \`write report://<project>/<slug>\` — project is the repo dir name (here \`${project}\`); body = an HTML fragment or GitHub-flavoured Markdown after a \`---\` frontmatter block with \`title\` (and optional \`description\`).`,
 		`- Edit in place: hashline \`edit\` on \`report://<project>/<slug>\`. List: \`read report://list\` (\`?project=<name>\`, \`?project=*\`); text version: \`<slug>.md\`; guide: \`read report://guide\`.`,
 		'- Assets: `report_upload` with {project, slug, path} uploads a local file and returns the `<img src="assets/…">` markup.',
 		"- Rules: lead with the result; state each fact once (no recap, no conclusion); prefer tables/charts/images over prose; no narration, hedging, filler, or footnotes; edit the existing report instead of adding new ones.",

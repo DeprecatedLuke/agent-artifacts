@@ -53,7 +53,10 @@ pub async fn seed(app: &App) {
         }
     };
 
-    let markdown = app.md.convert(&parsed.body).unwrap_or_default();
+    let markdown = app
+        .md
+        .convert(&source::fragment_html(&parsed.body))
+        .unwrap_or_default();
     let at = db::now();
     let result = app
         .db

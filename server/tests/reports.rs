@@ -422,3 +422,265 @@ async fn text_version_renders_components_as_fenced_blocks() {
         "{text}"
     );
 }
+
+/// The report fragment inside a served body or document (`<main id="report-body">...</main>`).
+fn served_fragment(html: &str) -> &str {
+    const OPEN: &str = "<main id=\"report-body\" class=\"report-body\">";
+    let start = html.find(OPEN).expect("report-body main") + OPEN.len();
+    let end = html.rfind("</main>").expect("closing main");
+    &html[start..end]
+}
+
+/// The fragment as served on every surface that renders a report body: the owner body,
+/// the share body and the cap document.
+async fn served_fragments(srv: &Server, project: &str, slug: &str) -> Vec<(&'static str, String)> {
+    let token = srv.share(project, slug).await["token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let cap = srv.view_cap(project, slug).await;
+    let mut out = Vec::new();
+    for (surface, resp) in [
+        (
+            "owner-body",
+            srv.get(&format!("/api/reports/{project}/{slug}/body"))
+                .await,
+        ),
+        (
+            "share-body",
+            srv.get_anon(&format!("/s/{token}/body")).await,
+        ),
+        ("cap-document", srv.get_anon(&format!("/c/{cap}/")).await),
+    ] {
+        assert_eq!(resp.status, 200, "{slug} {surface}: {}", resp.text());
+        out.push((surface, served_fragment(&resp.text()).to_string()));
+    }
+    out
+}
+
+#[tokio::test]
+async fn markdown_bodies_are_served_as_html() {
+    let srv = Server::start();
+    let cases: [(&str, &str, &[&str], &[&str]); 9] = [
+        (
+            "gfm-table",
+            "# Result\n\n## Detail\n\n| Case | Status |\n|---|---|\n| login | `200` |\n",
+            &[
+                "<h2>Result</h2>",
+                "<h3>Detail</h3>",
+                "<th>Case</th>",
+                "<td><code>200</code></td>",
+            ],
+            &["<h1", "|---|", "## ", "# Result", "`200`"],
+        ),
+        (
+            "gfm-inline-extensions",
+            "~~old~~ text\n\n- [x] done\n- [ ] open\n",
+            &["<del>old</del>", "type=\"checkbox\""],
+            &["~~", "[x]"],
+        ),
+        (
+            "no-h1-keeps-levels",
+            "## Only\n\ntext\n",
+            &["<h2>Only</h2>"],
+            &["<h3"],
+        ),
+        (
+            "demotion-capped-at-h6",
+            "# Top\n\n##### Five\n\n###### Six\n",
+            &["<h2>Top</h2>", "<h6>Five</h6>", "<h6>Six</h6>"],
+            &["<h7"],
+        ),
+        (
+            "mermaid-fence",
+            "Flow:\n\n```mermaid\ngraph TD; A-->B & C<D\n```\n",
+            &["<pre class=\"mermaid\">graph TD; A--&gt;B &amp; C&lt;D"],
+            &["<code", "```"],
+        ),
+        (
+            "language-fence",
+            "Code:\n\n```rust\nlet ok = 1 < 2;\n```\n",
+            &["<pre><code class=\"language-rust\">let ok = 1 &lt; 2;"],
+            &["mermaid", "```"],
+        ),
+        (
+            "raw-html-passthrough",
+            "Intro\n\n<x-metric label=\"p95\" value=\"12 ms\"></x-metric>\n",
+            &[
+                "<p>Intro</p>",
+                "<x-metric label=\"p95\" value=\"12 ms\"></x-metric>",
+            ],
+            &["&lt;x-metric"],
+        ),
+        (
+            "leading-void-elements",
+            "<img src=\"assets/a.png\" alt=\"a\">\n<br>\n\nAfter **image**\n",
+            &["<strong>image</strong>"],
+            &["**"],
+        ),
+        (
+            "leading-closed-html-block",
+            "<details><summary>More</summary>\n\nhidden\n\n</details>\n\n## After\n",
+            &["<h2>After</h2>"],
+            &["## "],
+        ),
+    ];
+    for (slug, body, present, absent) in cases {
+        srv.upsert("md", slug, "Markdown", body).await;
+        for (surface, fragment) in served_fragments(&srv, "md", slug).await {
+            for needle in present {
+                assert!(
+                    fragment.contains(needle),
+                    "{slug} {surface}: missing {needle:?} in:\n{fragment}"
+                );
+            }
+            for needle in absent {
+                assert!(
+                    !fragment.contains(needle),
+                    "{slug} {surface}: unexpected {needle:?} in:\n{fragment}"
+                );
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn html_bodies_are_served_byte_identical() {
+    const GUIDE: &str = include_str!("../../docs/guide.html");
+    let guide_body = &GUIDE[GUIDE.find("\n---\n").expect("guide frontmatter") + 5..];
+    let srv = Server::start();
+    let cases = [
+        (
+            "padding-comments-voids",
+            "\n\n  <!-- generated -->\n<p>One</p>\n<br>\n<img src=\"assets/a.png\" alt=\"a\">\n<hr/>\n<BR>\n\t\n"
+                .to_string(),
+        ),
+        (
+            "custom-elements",
+            "<x-grid cols=\"2\">\n\t<x-metric label=\"p95\" value=\"12 ms\" trend=\"good\"></x-metric>\n</x-grid>\n<x-metric label=\"err\" value=\"0.1%\"></x-metric>"
+                .to_string(),
+        ),
+        (
+            "markdown-syntax-inside-elements",
+            "<pre><code>## not a heading\n| a | b |\n|---|---|</code></pre>\n<p># still html, `not code`</p>\n"
+                .to_string(),
+        ),
+        ("guide", guide_body.to_string()),
+    ];
+    for (slug, body) in cases {
+        srv.upsert("html", slug, "Html", &body).await;
+        for (surface, fragment) in served_fragments(&srv, "html", slug).await {
+            assert!(
+                fragment == body,
+                "{slug} {surface}: fragment differs from body:\n{fragment}"
+            );
+        }
+    }
+}
+
+#[tokio::test]
+async fn markdown_validation_flags_problems_at_full_source_lines() {
+    let srv = Server::start();
+    let cases = [
+        (
+            "glyph-in-prose",
+            fm6("# Result\n\nfast \u{2192} slow\n"),
+            vec![9],
+        ),
+        (
+            "glyph-after-code",
+            fm6("`a \u{2192} b`\n\n```\nx \u{2192} y\nz\n```\n\nthen \u{2192} done\n"),
+            vec![14],
+        ),
+        (
+            "style-element",
+            fm6("Intro\n\n<style>p{}</style>\n"),
+            vec![9],
+        ),
+        (
+            "external-image",
+            fm6("Intro\n\n![x](https://example.test/a.png)\n"),
+            vec![9],
+        ),
+        (
+            "external-reference-image",
+            fm6("Intro\n\n![x][logo]\n\n[logo]: https://example.test/a.png\n"),
+            vec![9],
+        ),
+    ];
+    for (slug, source, lines) in cases {
+        let resp = srv.put_source("md", slug, &source).await;
+        assert_eq!(resp.status, 422, "{slug}: {}", resp.text());
+        let body = resp.json();
+        assert_eq!(body["error"], "validation", "{slug}");
+        let expected: Vec<Option<u64>> = lines.into_iter().map(Some).collect();
+        assert_eq!(problem_lines(&body), expected, "{slug}: {body}");
+    }
+}
+
+#[tokio::test]
+async fn markdown_validation_ignores_code_and_link_destinations() {
+    let srv = Server::start();
+    let cases = [
+        ("code-span-glyph", "Use `a \u{2192} b` here.\n"),
+        ("fenced-glyph", "Intro\n\n```text\nx \u{2192} y\n```\n"),
+        ("indented-glyph", "Intro\n\n    x \u{2192} y\n"),
+        ("code-span-style", "Never write `<style>` in a report.\n"),
+        (
+            "fenced-forbidden-html",
+            "Example:\n\n```html\n<style>p{}</style>\n<img src=\"https://x.test/a.png\">\n```\n",
+        ),
+        ("escaped-tag", "Literal \\<style> text.\n"),
+        (
+            "link-destination-glyph",
+            "See [docs](https://example.test/\u{2192}).\n",
+        ),
+        ("asset-image", "![chart](assets/chart.png)\n"),
+    ];
+    for (slug, body) in cases {
+        let resp = srv.put_source("md", slug, &doc("Allowed", body)).await;
+        assert_eq!(resp.status, 200, "{slug}: {}", resp.text());
+    }
+}
+
+#[tokio::test]
+async fn markdown_text_version_is_derived_from_rendered_html() {
+    let srv = Server::start();
+    // No outer pipes: a table rebuilt from the rendered HTML has them, the source rows do not.
+    let body = "# Result\n\nCase | Status\n:-- | --:\nlogin | `200`\n";
+    let source = doc("Markdown", body);
+    assert_eq!(srv.put_source("md", "t", &source).await.status, 200);
+
+    assert_eq!(
+        srv.get("/api/reports/md/t/source").await.body,
+        source.as_bytes()
+    );
+
+    let text = srv.get("/api/reports/md/t/text").await.text();
+    let lines: Vec<&str> = text.lines().collect();
+    // Rendered `h2` (the demoted `#`), not the source heading.
+    assert!(lines.contains(&"## Result"), "{text}");
+    assert!(!lines.contains(&"# Result"), "{text}");
+    // A pipe table rebuilt from `<table>`, not the source rows.
+    let rows: Vec<Vec<&str>> = lines
+        .iter()
+        .filter(|line| line.starts_with('|') && line.ends_with('|'))
+        .map(|line| line[1..line.len() - 1].split('|').map(str::trim).collect())
+        .collect();
+    assert_eq!(rows.len(), 3, "{text}");
+    assert_eq!(rows[0], ["Case", "Status"], "{text}");
+    assert!(
+        rows[1]
+            .iter()
+            .all(|cell| !cell.is_empty() && cell.chars().all(|c| c == '-' || c == ':')),
+        "{text}"
+    );
+    assert_eq!(rows[2], ["login", "`200`"], "{text}");
+    for raw in ["Case | Status", "login | `200`"] {
+        assert!(
+            !lines.contains(&raw),
+            "source row {raw:?} leaked into:\n{text}"
+        );
+    }
+    assert!(!text.contains("<table"), "{text}");
+}
