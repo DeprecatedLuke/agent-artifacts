@@ -6,7 +6,7 @@ metadata:
     app: artifacts
 spec:
   dnsNames:
-    - ${ARTIFACTS_HOST}
+    - ${AGENT_REPORTS_HOST}
   secretName: artifacts-tls
   issuerRef:
     name: letsencrypt-dns

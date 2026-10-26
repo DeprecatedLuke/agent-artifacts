@@ -3,26 +3,26 @@ version: "3"
 # Deploy + dev entry points for artifacts.
 #
 # Site values come from the environment (or .env, mode 600, gitignored):
-#   ARTIFACTS_REGISTRY      image registry, e.g. ghcr.io/you        (required for images)
-#   ARTIFACTS_HOST          public hostname, e.g. artifacts.example.com
-#   ARTIFACTS_PUBLIC_URL    https://<ARTIFACTS_HOST>
-#   ACME_EMAIL              Let's Encrypt contact address
-#   ARTIFACTS_KUBE_CONTEXT  kubectl context                        (default: current)
-#   ARTIFACTS_PULL_SECRET   image pull Secret in the namespace     (default: registry-credentials)
-#   ARTIFACTS_SESSION_TOKEN, ARTIFACTS_OWNER_SECRET,
-#   ARTIFACTS_BASIC_AUTH_USER, ARTIFACTS_BASIC_AUTH_PASSWORD       (secrets)
+#   AGENT_REPORTS_REGISTRY      image registry, e.g. ghcr.io/you        (required for images)
+#   AGENT_REPORTS_HOST          public hostname, e.g. artifacts.example.com
+#   AGENT_REPORTS_PUBLIC_URL    https://<AGENT_REPORTS_HOST>
+#   ACME_EMAIL                  Let's Encrypt contact address
+#   AGENT_REPORTS_KUBE_CONTEXT  kubectl context                        (default: current)
+#   AGENT_REPORTS_PULL_SECRET   image pull Secret in the namespace     (default: registry-credentials)
+#   AGENT_REPORTS_SESSION_TOKEN, AGENT_REPORTS_OWNER_SECRET,
+#   AGENT_REPORTS_BASIC_AUTH_USER, AGENT_REPORTS_BASIC_AUTH_PASSWORD   (secrets)
 # All of them are substituted into the rendered manifests by envsubst; the
 # explicit list keeps every other `$` in the manifests intact.
 vars:
-  REGISTRY: '{{.ARTIFACTS_REGISTRY}}'
+  REGISTRY: '{{.AGENT_REPORTS_REGISTRY}}'
   IMAGE: artifacts
-  KUBE_CONTEXT: '{{.ARTIFACTS_KUBE_CONTEXT}}'
-  PULL_SECRET: '{{.ARTIFACTS_PULL_SECRET | default "registry-credentials"}}'
+  KUBE_CONTEXT: '{{.AGENT_REPORTS_KUBE_CONTEXT}}'
+  PULL_SECRET: '{{.AGENT_REPORTS_PULL_SECRET | default "registry-credentials"}}'
   NAMESPACE: artifacts
   PLATFORM: linux/amd64
   ENVSUBST_VARS: >-
-    $ARTIFACTS_SESSION_TOKEN $ARTIFACTS_OWNER_SECRET $ARTIFACTS_HTPASSWD
-    $ARTIFACTS_HOST $ARTIFACTS_PUBLIC_URL $ARTIFACTS_REGISTRY $ARTIFACTS_PULL_SECRET $ACME_EMAIL
+    $AGENT_REPORTS_SESSION_TOKEN $AGENT_REPORTS_OWNER_SECRET $AGENT_REPORTS_HTPASSWD
+    $AGENT_REPORTS_HOST $AGENT_REPORTS_PUBLIC_URL $AGENT_REPORTS_REGISTRY $AGENT_REPORTS_PULL_SECRET $ACME_EMAIL
   # Immutable tag: <git short sha>-<YYYYMMDD-HHMM> (override with TAG=...).
   TAG_PREFIX:
     sh: git rev-parse --short HEAD 2>/dev/null || printf 'nogit'
@@ -51,10 +51,10 @@ tasks:
     dir: server
     cmds:
       - >-
-        ARTIFACTS_BIND=127.0.0.1:8787 ARTIFACTS_DATA_DIR=../.data
-        ARTIFACTS_WEB_DIR=../web/dist ARTIFACTS_RENDER_DIR=../render/dist
-        ARTIFACTS_GUIDE_PATH=../docs/guide.html ARTIFACTS_PUBLIC_URL=http://localhost:5173
-        ARTIFACTS_OWNER_SECRET=dev cargo run
+        AGENT_REPORTS_BIND=127.0.0.1:8787 AGENT_REPORTS_DATA_DIR=../.data
+        AGENT_REPORTS_WEB_DIR=../web/dist AGENT_REPORTS_RENDER_DIR=../render/dist
+        AGENT_REPORTS_GUIDE_PATH=../docs/guide.html AGENT_REPORTS_PUBLIC_URL=http://localhost:5173
+        AGENT_REPORTS_OWNER_SECRET=dev cargo run
 
   dev:web:
     desc: Run the Vite dev server on http://localhost:5173 (proxies /api, /s, /c, /_render)
@@ -80,7 +80,7 @@ tasks:
     desc: Build and push the linux/amd64 image with an immutable tag (default {{.TAG_PREFIX}}-<timestamp>)
     preconditions:
       - sh: '[ -n "{{.REGISTRY}}" ]'
-        msg: ARTIFACTS_REGISTRY is unset (e.g. ghcr.io/you)
+        msg: AGENT_REPORTS_REGISTRY is unset (e.g. ghcr.io/you)
     vars:
       TAG: '{{.TAG | default (printf "%s-%s" .TAG_PREFIX (now | date "20060102-1504"))}}'
     cmds:
@@ -102,21 +102,21 @@ tasks:
   apply:
     desc: Render deploy/ and apply it to the cluster (htpasswd generated from .env)
     preconditions: &secrets
-      - sh: '[ "${#ARTIFACTS_SESSION_TOKEN}" -ge 64 ]'
-        msg: ARTIFACTS_SESSION_TOKEN missing or short in .env (openssl rand -hex 32)
-      - sh: '[ "${#ARTIFACTS_OWNER_SECRET}" -ge 64 ]'
-        msg: ARTIFACTS_OWNER_SECRET missing or short in .env (openssl rand -hex 32)
-      - sh: '[ -n "${ARTIFACTS_BASIC_AUTH_USER:-}" ] && [ -n "${ARTIFACTS_BASIC_AUTH_PASSWORD:-}" ]'
-        msg: ARTIFACTS_BASIC_AUTH_USER / ARTIFACTS_BASIC_AUTH_PASSWORD missing in .env
-      - sh: '[ -n "${ARTIFACTS_HOST:-}" ] && [ -n "${ARTIFACTS_PUBLIC_URL:-}" ] && [ -n "${ACME_EMAIL:-}" ]'
-        msg: ARTIFACTS_HOST, ARTIFACTS_PUBLIC_URL and ACME_EMAIL must be set in .env
+      - sh: '[ "${#AGENT_REPORTS_SESSION_TOKEN}" -ge 64 ]'
+        msg: AGENT_REPORTS_SESSION_TOKEN missing or short in .env (openssl rand -hex 32)
+      - sh: '[ "${#AGENT_REPORTS_OWNER_SECRET}" -ge 64 ]'
+        msg: AGENT_REPORTS_OWNER_SECRET missing or short in .env (openssl rand -hex 32)
+      - sh: '[ -n "${AGENT_REPORTS_BASIC_AUTH_USER:-}" ] && [ -n "${AGENT_REPORTS_BASIC_AUTH_PASSWORD:-}" ]'
+        msg: AGENT_REPORTS_BASIC_AUTH_USER / AGENT_REPORTS_BASIC_AUTH_PASSWORD missing in .env
+      - sh: '[ -n "${AGENT_REPORTS_HOST:-}" ] && [ -n "${AGENT_REPORTS_PUBLIC_URL:-}" ] && [ -n "${ACME_EMAIL:-}" ]'
+        msg: AGENT_REPORTS_HOST, AGENT_REPORTS_PUBLIC_URL and ACME_EMAIL must be set in .env
     cmds:
       - |
         set -eu
         # apr1 hash contains `$`, which envsubst leaves alone because it only
         # substitutes the explicitly listed variable names.
-        export ARTIFACTS_HTPASSWD="${ARTIFACTS_BASIC_AUTH_USER}:$(openssl passwd -apr1 "$ARTIFACTS_BASIC_AUTH_PASSWORD")"
-        export ARTIFACTS_PULL_SECRET="{{.PULL_SECRET}}"
+        export AGENT_REPORTS_HTPASSWD="${AGENT_REPORTS_BASIC_AUTH_USER}:$(openssl passwd -apr1 "$AGENT_REPORTS_BASIC_AUTH_PASSWORD")"
+        export AGENT_REPORTS_PULL_SECRET="{{.PULL_SECRET}}"
         kubectl kustomize deploy \
           | envsubst '{{.ENVSUBST_VARS}}' \
           | kubectl apply --context={{.KUBE_CONTEXT}} -f -
@@ -164,17 +164,17 @@ tasks:
         | kubectl apply --context={{.KUBE_CONTEXT}} -f -
 
   dns:
-    desc: Upsert a DNS-only A record for ARTIFACTS_HOST (Cloudflare; needs CF_API_TOKEN)
+    desc: Upsert a DNS-only A record for AGENT_REPORTS_HOST (Cloudflare; needs CF_API_TOKEN)
     vars:
-      ZONE: '{{.ARTIFACTS_ZONE}}'
-      NAME: '{{.ARTIFACTS_HOST}}'
-      IP: '{{.ARTIFACTS_HOST_IP}}'
+      ZONE: '{{.AGENT_REPORTS_ZONE}}'
+      NAME: '{{.AGENT_REPORTS_HOST}}'
+      IP: '{{.AGENT_REPORTS_HOST_IP}}'
     cmds:
       - |
         set -eu
         : "${CF_API_TOKEN:?set CF_API_TOKEN (Zone:DNS:Edit)}"
-        : "${ARTIFACTS_ZONE:?set ARTIFACTS_ZONE}"
-        : "${ARTIFACTS_HOST_IP:?set ARTIFACTS_HOST_IP}"
+        : "${AGENT_REPORTS_ZONE:?set AGENT_REPORTS_ZONE}"
+        : "${AGENT_REPORTS_HOST_IP:?set AGENT_REPORTS_HOST_IP}"
         api=https://api.cloudflare.com/client/v4
         auth="Authorization: Bearer $CF_API_TOKEN"
         zone=$(curl -fsS -H "$auth" "$api/zones?name={{.ZONE}}" | jq -r '.result[0].id // empty')
@@ -202,15 +202,15 @@ tasks:
       - cd plugin && bun install && omp plugin link "$PWD"
 
   plugin:login:
-    desc: Store ARTIFACTS_SESSION_TOKEN as the plugin `session` setting (never echoed)
+    desc: Store AGENT_REPORTS_SESSION_TOKEN as the plugin `session` setting (never echoed)
     preconditions:
-      - sh: '[ "${#ARTIFACTS_SESSION_TOKEN}" -ge 64 ]'
-        msg: ARTIFACTS_SESSION_TOKEN missing or short in .env
+      - sh: '[ "${#AGENT_REPORTS_SESSION_TOKEN}" -ge 64 ]'
+        msg: AGENT_REPORTS_SESSION_TOKEN missing or short in .env
     cmds:
       - |
         set -eu
         set -a; . ./.env; set +a
-        omp plugin config set artifacts session "$ARTIFACTS_SESSION_TOKEN"
+        omp plugin config set artifacts session "$AGENT_REPORTS_SESSION_TOKEN"
 
   logs:
     desc: Follow the server logs

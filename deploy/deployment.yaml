@@ -18,7 +18,7 @@ spec:
         app: artifacts
     spec:
       imagePullSecrets:
-        - name: ${ARTIFACTS_PULL_SECRET}
+        - name: ${AGENT_REPORTS_PULL_SECRET}
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532
@@ -30,26 +30,26 @@ spec:
           type: RuntimeDefault
       containers:
         - name: artifacts
-          # Placeholder: deploy/kustomization.yaml sets ${ARTIFACTS_REGISTRY}/artifacts:<pinned tag>.
+          # Placeholder: deploy/kustomization.yaml sets ${AGENT_REPORTS_REGISTRY}/artifacts:<pinned tag>.
           image: artifacts
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
               containerPort: 8080
           env:
-            - name: ARTIFACTS_BIND
+            - name: AGENT_REPORTS_BIND
               value: 0.0.0.0:8080
-            - name: ARTIFACTS_DATA_DIR
+            - name: AGENT_REPORTS_DATA_DIR
               value: /data
-            - name: ARTIFACTS_WEB_DIR
+            - name: AGENT_REPORTS_WEB_DIR
               value: /app/web
-            - name: ARTIFACTS_RENDER_DIR
+            - name: AGENT_REPORTS_RENDER_DIR
               value: /app/render
-            - name: ARTIFACTS_GUIDE_PATH
+            - name: AGENT_REPORTS_GUIDE_PATH
               value: /app/docs/guide.html
-            - name: ARTIFACTS_PUBLIC_URL
-              value: ${ARTIFACTS_PUBLIC_URL}
-            - name: ARTIFACTS_OWNER_SECRET
+            - name: AGENT_REPORTS_PUBLIC_URL
+              value: ${AGENT_REPORTS_PUBLIC_URL}
+            - name: AGENT_REPORTS_OWNER_SECRET
               valueFrom:
                 secretKeyRef:
                   name: artifacts-owner

@@ -27,7 +27,7 @@ Non-interactive alternative (the cookie value is never echoed):
 
 ```sh
 set -a; . ./.env; set +a
-omp plugin config set artifacts session "$ARTIFACTS_SESSION_TOKEN"
+omp plugin config set artifacts session "$AGENT_REPORTS_SESSION_TOKEN"
 ```
 
 Settings live in `~/.omp/plugins/omp-plugins.lock.json` under `settings.artifacts`

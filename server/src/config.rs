@@ -23,20 +23,20 @@ fn env_or(name: &str, default: &str) -> String {
 
 impl Config {
     pub fn from_env() -> Result<Self> {
-        let owner_secret = match std::env::var("ARTIFACTS_OWNER_SECRET") {
+        let owner_secret = match std::env::var("AGENT_REPORTS_OWNER_SECRET") {
             Ok(v) if !v.is_empty() => v,
-            _ => bail!("ARTIFACTS_OWNER_SECRET is required"),
+            _ => bail!("AGENT_REPORTS_OWNER_SECRET is required"),
         };
 
-        let public_url = env_or("ARTIFACTS_PUBLIC_URL", "http://localhost:8080");
+        let public_url = env_or("AGENT_REPORTS_PUBLIC_URL", "http://localhost:8080");
         let public_url = public_url.trim_end_matches('/').to_string();
 
         Ok(Self {
-            bind: env_or("ARTIFACTS_BIND", "0.0.0.0:8080"),
-            data_dir: PathBuf::from(env_or("ARTIFACTS_DATA_DIR", "/data")),
-            web_dir: PathBuf::from(env_or("ARTIFACTS_WEB_DIR", "/app/web")),
-            render_dir: PathBuf::from(env_or("ARTIFACTS_RENDER_DIR", "/app/render")),
-            guide_path: PathBuf::from(env_or("ARTIFACTS_GUIDE_PATH", "/app/docs/guide.html")),
+            bind: env_or("AGENT_REPORTS_BIND", "0.0.0.0:8080"),
+            data_dir: PathBuf::from(env_or("AGENT_REPORTS_DATA_DIR", "/data")),
+            web_dir: PathBuf::from(env_or("AGENT_REPORTS_WEB_DIR", "/app/web")),
+            render_dir: PathBuf::from(env_or("AGENT_REPORTS_RENDER_DIR", "/app/render")),
+            guide_path: PathBuf::from(env_or("AGENT_REPORTS_GUIDE_PATH", "/app/docs/guide.html")),
             owner_secret,
             public_url,
         })

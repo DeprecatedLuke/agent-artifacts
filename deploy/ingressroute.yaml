@@ -14,7 +14,7 @@ spec:
     - websecure
   routes:
     - match: >-
-        Host(`${ARTIFACTS_HOST}`) && (PathPrefix(`/s/`) || PathPrefix(`/c/`) || PathPrefix(`/_render/`) || PathPrefix(`/assets/`) || Path(`/favicon.svg`) || Path(`/healthz`))
+        Host(`${AGENT_REPORTS_HOST}`) && (PathPrefix(`/s/`) || PathPrefix(`/c/`) || PathPrefix(`/_render/`) || PathPrefix(`/assets/`) || Path(`/favicon.svg`) || Path(`/healthz`))
       kind: Rule
       priority: 100
       middlewares:
@@ -22,7 +22,7 @@ spec:
       services:
         - name: artifacts
           port: 80
-    - match: 'Host(`${ARTIFACTS_HOST}`) && HeaderRegexp(`Cookie`, `(^|;\s*)__Host-artifacts=${ARTIFACTS_SESSION_TOKEN}(;|$)`)'
+    - match: 'Host(`${AGENT_REPORTS_HOST}`) && HeaderRegexp(`Cookie`, `(^|;\s*)__Host-artifacts=${AGENT_REPORTS_SESSION_TOKEN}(;|$)`)'
       kind: Rule
       priority: 50
       middlewares:
@@ -31,7 +31,7 @@ spec:
       services:
         - name: artifacts
           port: 80
-    - match: Host(`${ARTIFACTS_HOST}`)
+    - match: Host(`${AGENT_REPORTS_HOST}`)
       kind: Rule
       priority: 10
       middlewares:
