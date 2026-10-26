@@ -14,4 +14,4 @@ resources:
 images:
   - name: artifacts
     newName: ${AGENT_REPORTS_REGISTRY}/artifacts
-    newTag: "c14b21a-20261024-0945"
+    newTag: "c8f0788-20261026-0944"
