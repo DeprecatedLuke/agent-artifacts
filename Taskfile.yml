@@ -19,7 +19,7 @@ vars:
   IMAGE: agent-reports
   KUBE_CONTEXT: '{{.AGENT_REPORTS_KUBE_CONTEXT}}'
   PULL_SECRET: '{{.AGENT_REPORTS_PULL_SECRET | default "registry-credentials"}}'
-  NAMESPACE: agent-reports
+  NAMESPACE: agents
   DEPLOY_DIR: '{{.AGENT_REPORTS_DEPLOY_DIR | default "deploy"}}'
   PLATFORM: linux/amd64
   ENVSUBST_VARS: >-
@@ -144,7 +144,7 @@ tasks:
   # bootstrap
   # ---------------------------------------------------------------------------
   namespace:
-    desc: Create ns agent-reports
+    desc: Create ns {{.NAMESPACE}}
     cmds:
       - kubectl apply --context={{.KUBE_CONTEXT}} -f deploy/namespace.yaml
 

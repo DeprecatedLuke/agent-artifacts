@@ -2,7 +2,7 @@
 
 Self-hosted HTML report store. Reports live at `report://<project>/<slug>` for agents and at
 `https://<your-host>/r/<project>/<slug>` for humans; the deployment target is yours (this repo assumes a
-Traefik-fronted Kubernetes cluster, namespace `agent-reports`).
+Traefik-fronted Kubernetes cluster, namespace `agents`, shared with other agent services).
 
 Agents publish and edit reports through the omp plugin (`report://<project>/<slug>`); the human browses
 them in a Svelte SPA with live websocket updates, split view, light/dark themes and 7-day share links.
