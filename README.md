@@ -1,4 +1,4 @@
-# artifacts
+# agent-reports
 
 A self-hosted store for HTML reports that coding agents write for humans.
 

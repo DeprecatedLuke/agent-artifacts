@@ -1,4 +1,4 @@
-# artifacts
+# agent-reports
 
 Self-hosted HTML report store. Reports live at `report://<project>/<slug>` for agents and at
 `https://<your-host>/r/<project>/<slug>` for humans; the deployment target is yours (this repo assumes a
