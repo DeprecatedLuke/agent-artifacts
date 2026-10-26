@@ -41,7 +41,7 @@ function sync(el: HTMLElement, data: Record<string, string>): void {
 		delete el.dataset.icon;
 		if (name && !unknown.has(name)) {
 			unknown.add(name);
-			console.warn(`[artifacts] unknown icon "${name}" — use a Heroicons 20/solid name (heroicons.com)`);
+			console.warn(`[agent-reports] unknown icon "${name}" — use a Heroicons 20/solid name (heroicons.com)`);
 		}
 		return;
 	}

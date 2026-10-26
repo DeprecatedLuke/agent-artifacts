@@ -8,7 +8,7 @@ use axum::{
 
 /// `OPTIONS` response for the CORS-enabled public GET endpoints. Sandboxed
 /// iframe module fetches are simple requests, but tooling that injects
-/// `X-Artifacts-Owner` into a tab triggers a preflight; answer it.
+/// `X-Agent-Reports-Owner` into a tab triggers a preflight; answer it.
 pub fn cors_preflight(headers: &HeaderMap) -> Response {
     let mut resp = Response::new(Body::empty());
     *resp.status_mut() = StatusCode::NO_CONTENT;

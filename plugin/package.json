@@ -1,5 +1,5 @@
 {
-	"name": "artifacts",
+	"name": "agent-reports",
 	"version": "0.1.0",
 	"private": true,
 	"type": "module",
@@ -10,21 +10,21 @@
 		"fmt": "biome check --write ."
 	},
 	"omp": {
-		"name": "artifacts",
+		"name": "agent-reports",
 		"version": "0.1.0",
-		"description": "Human-facing HTML reports: report:// read/write/edit, /artifacts login, report_upload",
+		"description": "Human-facing HTML reports: report:// read/write/edit, /agent-reports login, report_upload",
 		"extensions": [
 			"./src/index.ts"
 		],
 		"settings": {
 			"url": {
 				"type": "string",
-				"description": "Base URL of the artifacts service",
+				"description": "Base URL of the agent-reports service",
 				"default": "http://localhost:8080"
 			},
 			"session": {
 				"type": "string",
-				"description": "Traefik remember-cookie value (set by /artifacts login)",
+				"description": "Traefik remember-cookie value (set by /agent-reports login)",
 				"secret": true
 			}
 		}

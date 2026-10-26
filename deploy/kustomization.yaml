@@ -1,6 +1,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: artifacts
+namespace: agent-reports
 resources:
   - namespace.yaml
   - pvc.yaml
@@ -12,6 +12,6 @@ resources:
   - middlewares.yaml
   - ingressroute.yaml
 images:
-  - name: artifacts
-    newName: ${AGENT_REPORTS_REGISTRY}/artifacts
+  - name: agent-reports
+    newName: ${AGENT_REPORTS_REGISTRY}/agent-reports
     newTag: "c8f0788-20261026-0944"

@@ -27,7 +27,7 @@ async fn owner_routes_reject_missing_or_wrong_owner_header() {
         for owner in wrong {
             let mut req = srv.anon(Method::GET, path);
             if let Some(owner) = owner {
-                req = req.header("x-artifacts-owner", owner);
+                req = req.header("x-agent-reports-owner", owner);
             }
             let resp = srv.send(req).await;
             assert_eq!(resp.status, 401, "{path} with owner {owner:?}");

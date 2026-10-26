@@ -3,9 +3,9 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: artifacts-data
+  name: agent-reports-data
   labels:
-    app: artifacts
+    app: agent-reports
 spec:
   accessModes:
     - ReadWriteOnce

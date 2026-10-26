@@ -1,9 +1,9 @@
 /**
- * HTTP client and persisted settings for the artifacts plugin.
+ * HTTP client and persisted settings for the agent-reports plugin.
  *
- * Settings live in the omp plugin lockfile (`omp plugin config set artifacts …`),
+ * Settings live in the omp plugin lockfile (`omp plugin config set agent-reports …`),
  * with project-level overrides honoured through the host plugin loader. Every
- * request carries the Traefik remember-cookie as `Cookie: __Host-artifacts=<session>`.
+ * request carries the Traefik remember-cookie as `Cookie: __Host-agent-reports=<session>`.
  */
 import { getPluginSettings } from "@oh-my-pi/pi-coding-agent/extensibility/plugins/loader";
 import { PluginManager } from "@oh-my-pi/pi-coding-agent/extensibility/plugins/manager";
@@ -21,10 +21,10 @@ import {
 	type ValidationProblem,
 } from "./guards";
 
-export const PLUGIN_NAME = "artifacts";
+export const PLUGIN_NAME = "agent-reports";
 /** Local dev default; a deployment sets `url` with `omp plugin config set`. */
 export const DEFAULT_URL = "http://localhost:8080";
-export const COOKIE_NAME = "__Host-artifacts";
+export const COOKIE_NAME = "__Host-agent-reports";
 /** Server limit for a report body (contract: 413 above this). */
 export const MAX_SOURCE_BYTES = 5 * 1024 * 1024;
 /** Server limit for a single asset. */
@@ -34,7 +34,7 @@ export const IDENTITY_RE = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 
 export type { ProjectSummary, ReportSummary, UploadedAsset, ValidationProblem };
 
-export interface ArtifactsConfig {
+export interface AgentReportsConfig {
 	url: string;
 	session?: string;
 }
@@ -63,7 +63,7 @@ interface CacheEntry<T> {
 	value: T;
 }
 
-const configCache = new Map<string, CacheEntry<ArtifactsConfig>>();
+const configCache = new Map<string, CacheEntry<AgentReportsConfig>>();
 const CONFIG_TTL_MS = 1000;
 
 function normalizeBaseUrl(value: string): string {
@@ -72,7 +72,7 @@ function normalizeBaseUrl(value: string): string {
 }
 
 /** Read `url` + `session` for `cwd`, merging global settings and project overrides. */
-export async function readConfig(cwd: string): Promise<ArtifactsConfig> {
+export async function readConfig(cwd: string): Promise<AgentReportsConfig> {
 	const cached = configCache.get(cwd);
 	if (cached !== undefined && Date.now() - cached.at < CONFIG_TTL_MS) return cached.value;
 	let settings: Record<string, unknown> = {};
@@ -83,7 +83,7 @@ export async function readConfig(cwd: string): Promise<ArtifactsConfig> {
 	}
 	const rawUrl = typeof settings.url === "string" ? settings.url.trim() : "";
 	const rawSession = typeof settings.session === "string" ? settings.session.trim() : "";
-	const value: ArtifactsConfig = {
+	const value: AgentReportsConfig = {
 		url: normalizeBaseUrl(rawUrl),
 		session: rawSession === "" ? undefined : rawSession,
 	};
@@ -120,7 +120,7 @@ function errorMessageFrom(body: unknown, fallback: string): string {
 
 /** Send a request to `cfg.url + pathname`. Only 401 is thrown here; callers map other statuses. */
 export async function request(
-	cfg: ArtifactsConfig,
+	cfg: AgentReportsConfig,
 	pathname: string,
 	init: RequestInit & { signal?: AbortSignal } = {},
 ): Promise<Response> {
@@ -133,13 +133,13 @@ export async function request(
 		throw new ApiError(0, `cannot reach ${cfg.url}: ${error instanceof Error ? error.message : String(error)}`);
 	}
 	if (response.status === 401) {
-		throw new ApiError(401, "not logged in — run /artifacts login", await parseBody(response));
+		throw new ApiError(401, "not logged in — run /agent-reports login", await parseBody(response));
 	}
 	return response;
 }
 
 /** `GET /api/me`: true when the configured cookie is accepted. */
-export async function checkLogin(cfg: ArtifactsConfig): Promise<boolean> {
+export async function checkLogin(cfg: AgentReportsConfig): Promise<boolean> {
 	try {
 		const response = await request(cfg, "/api/me");
 		return response.ok;
@@ -154,7 +154,7 @@ export async function checkLogin(cfg: ArtifactsConfig): Promise<boolean> {
  * Emulates the browser login: the credentials are never persisted, only the cookie.
  */
 export async function loginWithBasic(
-	cfg: ArtifactsConfig,
+	cfg: AgentReportsConfig,
 	username: string,
 	password: string,
 ): Promise<{ ok: boolean; status: number; cookie?: string }> {
@@ -179,7 +179,7 @@ export async function loginWithBasic(
 	};
 }
 
-export async function listProjects(cfg: ArtifactsConfig, signal?: AbortSignal): Promise<ProjectSummary[]> {
+export async function listProjects(cfg: AgentReportsConfig, signal?: AbortSignal): Promise<ProjectSummary[]> {
 	const response = await request(cfg, "/api/projects", { signal });
 	const body = await parseBody(response);
 	if (!response.ok) {
@@ -189,7 +189,7 @@ export async function listProjects(cfg: ArtifactsConfig, signal?: AbortSignal): 
 }
 
 export async function listReports(
-	cfg: ArtifactsConfig,
+	cfg: AgentReportsConfig,
 	project: string | undefined,
 	signal?: AbortSignal,
 ): Promise<ReportSummary[]> {
@@ -203,7 +203,7 @@ export async function listReports(
 }
 
 function revFromHeaders(response: Response): number {
-	const header = response.headers.get("X-Artifacts-Rev") ?? "";
+	const header = response.headers.get("X-Agent-Reports-Rev") ?? "";
 	if (/^\d+$/.test(header.trim())) return Number.parseInt(header.trim(), 10);
 	const etag = (response.headers.get("ETag") ?? "").replace(/^W\//, "").replace(/"/g, "").trim();
 	if (/^\d+$/.test(etag)) return Number.parseInt(etag, 10);
@@ -212,7 +212,7 @@ function revFromHeaders(response: Response): number {
 
 /** `GET …/source`; null when the report does not exist. */
 export async function fetchSource(
-	cfg: ArtifactsConfig,
+	cfg: AgentReportsConfig,
 	project: string,
 	slug: string,
 	signal?: AbortSignal,
@@ -232,7 +232,7 @@ export async function fetchSource(
 
 /** `GET …/text`; null when the report does not exist. */
 export async function fetchTextVersion(
-	cfg: ArtifactsConfig,
+	cfg: AgentReportsConfig,
 	project: string,
 	slug: string,
 	signal?: AbortSignal,
@@ -252,7 +252,7 @@ export async function fetchTextVersion(
 
 /** `PUT …/source` with optimistic concurrency. Throws {@link ApiError} on 412/413/422. */
 export async function putSource(
-	cfg: ArtifactsConfig,
+	cfg: AgentReportsConfig,
 	project: string,
 	slug: string,
 	text: string,
@@ -284,7 +284,7 @@ export async function putSource(
 
 /** `PUT …/assets/:name`. */
 export async function uploadAsset(
-	cfg: ArtifactsConfig,
+	cfg: AgentReportsConfig,
 	project: string,
 	slug: string,
 	name: string,

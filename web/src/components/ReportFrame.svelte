@@ -40,7 +40,7 @@ $effect(() => {
 });
 
 function post(message: Record<string, unknown>): void {
-	iframe?.contentWindow?.postMessage({ source: "artifacts", ...message }, "*");
+	iframe?.contentWindow?.postMessage({ source: "agent-reports", ...message }, "*");
 }
 
 function postTheme(): void {
@@ -116,7 +116,7 @@ function onMessage(event: MessageEvent): void {
 	const frame = iframe;
 	if (!frame || event.source !== frame.contentWindow) return;
 	const data = event.data as { source?: string; type?: string; rev?: number } | null;
-	if (!data || typeof data !== "object" || data.source !== "artifacts") return;
+	if (!data || typeof data !== "object" || data.source !== "agent-reports") return;
 	if (data.type === "ready") {
 		ready = true;
 		appliedRev = typeof data.rev === "number" ? data.rev : 0;

@@ -47,7 +47,7 @@ impl Config {
     }
 
     pub fn db_path(&self) -> PathBuf {
-        self.data_dir.join("artifacts.db")
+        self.data_dir.join("agent-reports.db")
     }
 
     /// Warn (once, at startup) about missing static directories so the server still boots

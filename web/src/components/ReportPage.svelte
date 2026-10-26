@@ -26,7 +26,7 @@ const key = $derived(`${project}/${slug}`);
 
 // The document inside the frame already shows project, title, description, updated time and rev.
 $effect(() => {
-	document.title = detail ? `${project}: ${detail.title}` : "artifacts";
+	document.title = detail ? `${project}: ${detail.title}` : "agent-reports";
 });
 
 async function load(): Promise<void> {

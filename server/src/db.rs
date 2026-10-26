@@ -195,7 +195,7 @@ impl Db {
     pub fn open(data_dir: &Path) -> Result<Self> {
         std::fs::create_dir_all(data_dir)
             .with_context(|| format!("creating data dir {}", data_dir.display()))?;
-        let path = data_dir.join("artifacts.db");
+        let path = data_dir.join("agent-reports.db");
         let conn =
             Connection::open(&path).with_context(|| format!("opening {}", path.display()))?;
         conn.pragma_update(None, "journal_mode", "WAL")?;

@@ -50,7 +50,7 @@ async fn revisions_start_at_one_and_increment_only_on_change() {
 
     let source = srv.get("/api/reports/p/s/source").await;
     assert_eq!(source.header("etag"), Some("\"2\""));
-    assert_eq!(source.header("x-artifacts-rev"), Some("2"));
+    assert_eq!(source.header("x-agent-reports-rev"), Some("2"));
 }
 
 #[tokio::test]

@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: artifacts
+  name: agent-reports
   labels:
-    app: artifacts
+    app: agent-reports
 spec:
   replicas: 1
   # SQLite on an RWO volume: never two pods at once.
@@ -11,11 +11,11 @@ spec:
     type: Recreate
   selector:
     matchLabels:
-      app: artifacts
+      app: agent-reports
   template:
     metadata:
       labels:
-        app: artifacts
+        app: agent-reports
     spec:
       imagePullSecrets:
         - name: ${AGENT_REPORTS_PULL_SECRET}
@@ -29,9 +29,9 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: artifacts
-          # Placeholder: deploy/kustomization.yaml sets ${AGENT_REPORTS_REGISTRY}/artifacts:<pinned tag>.
-          image: artifacts
+        - name: agent-reports
+          # Placeholder: deploy/kustomization.yaml sets ${AGENT_REPORTS_REGISTRY}/agent-reports:<pinned tag>.
+          image: agent-reports
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -52,7 +52,7 @@ spec:
             - name: AGENT_REPORTS_OWNER_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: artifacts-owner
+                  name: agent-reports-owner
                   key: owner-secret
           readinessProbe:
             httpGet:
@@ -89,6 +89,6 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: artifacts-data
+            claimName: agent-reports-data
         - name: tmp
           emptyDir: {}

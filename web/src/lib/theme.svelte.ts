@@ -1,7 +1,7 @@
 export type ThemePref = "system" | "light" | "dark";
 export type Scheme = "light" | "dark";
 
-const STORAGE_KEY = "artifacts-theme";
+const STORAGE_KEY = "agent-reports-theme";
 
 function readPref(): ThemePref {
 	try {

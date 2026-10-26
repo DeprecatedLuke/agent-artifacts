@@ -191,7 +191,7 @@ fn source_response(rev: i64, body: String) -> Response {
         HeaderValue::from_str(&format!("\"{rev}\"")).expect("etag is ASCII"),
     );
     headers.insert(
-        "x-artifacts-rev",
+        "x-agent-reports-rev",
         HeaderValue::from_str(&rev.to_string()).expect("rev is ASCII"),
     );
     resp
@@ -332,7 +332,7 @@ pub async fn get_text(
         HeaderValue::from_static("text/markdown; charset=utf-8"),
     );
     resp.headers_mut().insert(
-        "x-artifacts-rev",
+        "x-agent-reports-rev",
         HeaderValue::from_str(&row.rev.to_string()).expect("rev is ASCII"),
     );
     Ok(resp)
@@ -356,7 +356,7 @@ pub fn body_response(row: &ReportRow) -> Response {
         HeaderValue::from_static("text/html; charset=utf-8"),
     );
     resp.headers_mut().insert(
-        "x-artifacts-rev",
+        "x-agent-reports-rev",
         HeaderValue::from_str(&row.rev.to_string()).expect("rev is ASCII"),
     );
     resp

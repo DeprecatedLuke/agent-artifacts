@@ -340,7 +340,7 @@ async fn rejected_put_leaves_the_stored_report_unchanged() {
 
     let source = srv.get("/api/reports/p/s/source").await;
     assert_eq!(source.text(), original);
-    assert_eq!(source.header("x-artifacts-rev"), Some("1"));
+    assert_eq!(source.header("x-agent-reports-rev"), Some("1"));
     let meta = srv.get("/api/reports/p/s").await.json();
     assert_eq!(meta["rev"], 1);
     assert_eq!(meta["title"], "Original");

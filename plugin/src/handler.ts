@@ -1,9 +1,9 @@
 /**
- * `report://` protocol handler for the artifacts service.
+ * `report://` protocol handler for the agent-reports service.
  *
  * URL forms:
  * - `report://` / `report://list[/<project>]` / `report://list?project=*` — listings.
- * - `report://guide` — the writing guide (`artifacts/guide`, text version).
+ * - `report://guide` — the writing guide (`agent-reports/guide`, text version).
  * - `report://<project>/<slug>` — the editable source. Reads resolve to a local
  *   mirror file so hashline anchors and `edit` work; every change is pushed back
  *   by the plugin's `tool_result` hook (see `pushPendingEdits`).
@@ -26,8 +26,8 @@ import type {
 	WriteContext,
 } from "@oh-my-pi/pi-coding-agent/internal-urls";
 import {
+	type AgentReportsConfig,
 	ApiError,
-	type ArtifactsConfig,
 	fetchSource,
 	fetchTextVersion,
 	IDENTITY_RE,
@@ -44,7 +44,7 @@ import {
 /** Canonical cache directory for report mirrors. */
 export function mirrorRoot(): string {
 	const base = process.env.XDG_CACHE_HOME?.trim() || path.join(os.homedir(), ".cache");
-	return path.join(base, "omp-artifacts");
+	return path.join(base, "omp-agent-reports");
 }
 
 /** Local file backing `report://<project>/<slug>` (also its edit target). */
@@ -94,7 +94,7 @@ export function saveError(error: unknown, project: string, slug: string): Error 
 	if (!(error instanceof ApiError)) return error;
 	switch (error.status) {
 		case 401:
-			return new Error("not logged in — run /artifacts login");
+			return new Error("not logged in — run /agent-reports login");
 		case 412:
 			return new Error(`report changed (or already exists) — read report://${project}/${slug} again`);
 		case 413:
@@ -219,7 +219,7 @@ function otherProjectsLine(projects: readonly { project: string; count: number }
 
 /** Render the report listing for one project, or every project for `"*"`. */
 export async function renderListing(
-	cfg: ArtifactsConfig,
+	cfg: AgentReportsConfig,
 	project: string | "*" | undefined,
 	cwd: string,
 	signal?: AbortSignal,
@@ -233,7 +233,7 @@ export async function renderListing(
 			if (bucket === undefined) grouped.set(report.project, [report]);
 			else bucket.push(report);
 		}
-		const lines = ["# All artifacts reports", ""];
+		const lines = ["# All agent-reports reports", ""];
 		if (reports.length === 0) {
 			lines.push("No reports exist yet. Create one: `write report://<project>/<slug>`.");
 		}
@@ -269,7 +269,7 @@ export async function renderListing(
  * Returns null when the report does not exist.
  */
 export async function syncMirror(
-	cfg: ArtifactsConfig,
+	cfg: AgentReportsConfig,
 	project: string,
 	slug: string,
 	signal?: AbortSignal,
@@ -361,7 +361,7 @@ export async function pushPendingEdits(
 }
 
 /** `report://` handler: listings, guide, source (read/write/edit), text version. */
-export class ArtifactsReportHandler implements ProtocolHandler {
+export class AgentReportsHandler implements ProtocolHandler {
 	readonly scheme = "report";
 	readonly spec: SchemeSpec = {
 		backing: "file",
@@ -379,8 +379,8 @@ export class ArtifactsReportHandler implements ProtocolHandler {
 			case "list":
 				return markdown(url, await renderListing(cfg, parsed.project, cwd, context?.signal), true);
 			case "guide": {
-				const text = await fetchTextVersion(cfg, "artifacts", "guide", context?.signal);
-				if (text === null) throw new Error("the artifacts guide is not published yet (artifacts/guide)");
+				const text = await fetchTextVersion(cfg, "agent-reports", "guide", context?.signal);
+				if (text === null) throw new Error("the agent-reports guide is not published yet (agent-reports/guide)");
 				return markdown(url, text, true);
 			}
 			case "text": {

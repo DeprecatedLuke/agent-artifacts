@@ -11,7 +11,7 @@ const route = $derived(router.route);
 
 // Report and share views set their own `project: title` document title.
 $effect(() => {
-	if (route.name !== "report") document.title = "artifacts";
+	if (route.name !== "report") document.title = "agent-reports";
 });
 
 appSocket.connect();

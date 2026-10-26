@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "@artifacts/render",
+      "name": "@agent-reports/render",
       "dependencies": {
         "@pierre/diffs": "^1.6.1",
         "heroicons": "^2.2.0",

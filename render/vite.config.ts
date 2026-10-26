@@ -81,7 +81,7 @@ function heroicons(): Plugin {
 	const VIRTUAL = "virtual:heroicons";
 	const SRC = new URL("./src/", import.meta.url);
 	return {
-		name: "artifacts-heroicons",
+		name: "agent-reports-heroicons",
 		buildStart() {
 			for (const file of [...walk(SRC, ".ts"), ...walk(SRC, ".css")]) {
 				const found = bannedGlyph(readFileSync(file, "utf8"));

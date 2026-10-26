@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "artifacts-web",
+      "name": "agent-reports-web",
       "dependencies": {
         "heroicons": "^2.2.0",
       },

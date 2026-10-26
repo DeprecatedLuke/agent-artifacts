@@ -9,10 +9,10 @@ function backend(ws = false): ProxyOptions {
 	return {
 		target: BACKEND,
 		ws,
-		headers: { "X-Artifacts-Owner": OWNER },
+		headers: { "X-Agent-Reports-Owner": OWNER },
 		configure(proxy) {
 			proxy.on("proxyReqWs", proxyReq => {
-				proxyReq.setHeader("X-Artifacts-Owner", OWNER);
+				proxyReq.setHeader("X-Agent-Reports-Owner", OWNER);
 			});
 		},
 	};
@@ -25,7 +25,7 @@ function shareShell(): Plugin {
 		next();
 	};
 	return {
-		name: "artifacts-share-shell",
+		name: "agent-reports-share-shell",
 		configureServer(server) {
 			server.middlewares.use(rewrite);
 		},

@@ -24,7 +24,7 @@ const socket = new LiveSocket(`/s/${encodeURIComponent(token)}/ws`);
 
 // The frame document shows project, title and description; the tab title is not on the page.
 $effect(() => {
-	document.title = meta ? `${meta.project}: ${meta.title}` : "shared report · artifacts";
+	document.title = meta ? `${meta.project}: ${meta.title}` : "shared report · agent-reports";
 });
 
 async function loadMeta(): Promise<void> {

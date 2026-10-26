@@ -110,7 +110,7 @@ export async function render(root: ParentNode, _ctx: RenderContext): Promise<voi
 			try {
 				known = await ensureLanguage(highlighter, grammars, lang);
 			} catch (err) {
-				console.error(`[artifacts] shiki cannot load "${lang}"`, err);
+				console.error(`[agent-reports] shiki cannot load "${lang}"`, err);
 				return;
 			}
 			if (!known) return;
@@ -125,7 +125,7 @@ export async function render(root: ParentNode, _ctx: RenderContext): Promise<voi
 					defaultColor: "light-dark()",
 				});
 			} catch (err) {
-				console.error(`[artifacts] shiki failed on "${lang}"`, err);
+				console.error(`[agent-reports] shiki failed on "${lang}"`, err);
 				return;
 			}
 			const template = document.createElement("template");

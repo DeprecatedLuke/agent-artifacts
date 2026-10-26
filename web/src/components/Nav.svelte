@@ -6,7 +6,7 @@ import ThemeToggle from "./ThemeToggle.svelte";
 <header class="nav">
 	<a class="brand" href="/">
 		<span class="dot" aria-hidden="true"></span>
-		artifacts
+		agent-reports
 	</a>
 	<a class="nav-link" href="/split">
 		<Icon name="split" size={15} />

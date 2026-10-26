@@ -10,7 +10,7 @@ use subtle::ConstantTimeEq;
 
 use crate::App;
 
-/// Paths reachable without the `X-Artifacts-Owner` header.
+/// Paths reachable without the `X-Agent-Reports-Owner` header.
 pub fn is_public(path: &str) -> bool {
     fn under(path: &str, prefix: &str) -> bool {
         path.strip_prefix(prefix)
@@ -54,7 +54,7 @@ pub async fn owner_gate(State(app): State<App>, req: Request, next: Next) -> Res
     let is_api = path.starts_with("/api");
     let presented = req
         .headers()
-        .get("x-artifacts-owner")
+        .get("x-agent-reports-owner")
         .map(|v| v.as_bytes())
         .unwrap_or_default();
 

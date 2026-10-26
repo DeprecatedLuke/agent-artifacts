@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 #
-# Multi-stage build for artifacts (linux/amd64 in production):
+# Multi-stage build for agent-reports (linux/amd64 in production):
 #   render/ + web/  -> static bundles built with bun
 #   server/         -> Rust release binary (axum + rusqlite)
 # Runtime is distroless: only the binary, the two bundles and the guide.
@@ -37,16 +37,16 @@ RUN mkdir -p src \
  && cargo build --release --locked
 COPY server/ ./
 RUN touch src/main.rs && cargo build --release --locked \
- && cp target/release/artifacts /out-artifacts
+ && cp target/release/agent-reports /out-agent-reports
 
 # ---------------------------------------------------------------------------
 # runtime
 # ---------------------------------------------------------------------------
 FROM --platform=$TARGETPLATFORM gcr.io/distroless/cc-debian12:nonroot
 WORKDIR /app
-COPY --from=server /out-artifacts /app/artifacts
+COPY --from=server /out-agent-reports /app/agent-reports
 COPY --from=render /src/render/dist/ /app/render/
 COPY --from=web /src/web/dist/ /app/web/
 COPY docs/guide.html /app/docs/guide.html
 EXPOSE 8080
-ENTRYPOINT ["/app/artifacts"]
+ENTRYPOINT ["/app/agent-reports"]

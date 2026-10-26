@@ -130,7 +130,7 @@ async fn main() -> anyhow::Result<()> {
     let listener = TcpListener::bind(cfg.bind.as_str())
         .await
         .with_context(|| format!("binding {}", cfg.bind))?;
-    tracing::info!(addr = %listener.local_addr()?, data = %cfg.data_dir.display(), "artifacts server listening");
+    tracing::info!(addr = %listener.local_addr()?, data = %cfg.data_dir.display(), "agent-reports server listening");
 
     axum::serve(listener, router)
         .with_graceful_shutdown(shutdown_signal())

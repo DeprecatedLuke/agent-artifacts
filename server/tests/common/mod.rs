@@ -1,4 +1,4 @@
-//! Black-box harness: every test spawns the real `artifacts` binary on an ephemeral
+//! Black-box harness: every test spawns the real `agent-reports` binary on an ephemeral
 //! port with its own temp data/web/render directories, then talks HTTP/WebSocket to it.
 #![allow(dead_code)]
 
@@ -132,7 +132,7 @@ impl Server {
             std::fs::write(render.join("icons.json"), json).unwrap();
         }
 
-        let mut child = Command::new(env!("CARGO_BIN_EXE_artifacts"))
+        let mut child = Command::new(env!("CARGO_BIN_EXE_agent-reports"))
             .env_clear()
             .env("AGENT_REPORTS_BIND", "127.0.0.1:0")
             .env("AGENT_REPORTS_DATA_DIR", &data_dir)
@@ -147,7 +147,7 @@ impl Server {
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
             .spawn()
-            .expect("spawning artifacts binary");
+            .expect("spawning agent-reports binary");
 
         // Keep draining stdout for the whole run so the server never blocks on a full pipe.
         let stdout = child.stdout.take().expect("piped stdout");
@@ -190,7 +190,8 @@ impl Server {
 
     /// Request carrying the correct owner header.
     pub fn owner(&self, method: Method, path: &str) -> RequestBuilder {
-        self.anon(method, path).header("x-artifacts-owner", OWNER)
+        self.anon(method, path)
+            .header("x-agent-reports-owner", OWNER)
     }
 
     /// Request without any owner header (what Traefik forwards on public routes).
@@ -284,7 +285,7 @@ impl Server {
 
     /// A second connection to the server's SQLite file, for moving time (expiry) in tests.
     pub fn db(&self) -> rusqlite::Connection {
-        let conn = rusqlite::Connection::open(self.data_dir.join("artifacts.db")).unwrap();
+        let conn = rusqlite::Connection::open(self.data_dir.join("agent-reports.db")).unwrap();
         conn.busy_timeout(Duration::from_secs(10)).unwrap();
         conn
     }
@@ -294,7 +295,7 @@ impl Server {
         let mut req = url.into_client_request()?;
         if with_owner {
             req.headers_mut()
-                .insert("x-artifacts-owner", HeaderValue::from_static(OWNER));
+                .insert("x-agent-reports-owner", HeaderValue::from_static(OWNER));
         }
         let (ws, _) = tokio_tungstenite::connect_async(req).await?;
         Ok(ws)

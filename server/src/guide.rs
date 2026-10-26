@@ -7,11 +7,11 @@ use crate::{
     source,
 };
 
-const GUIDE_PROJECT: &str = "artifacts";
+const GUIDE_PROJECT: &str = "agent-reports";
 const GUIDE_SLUG: &str = "guide";
 const GUIDE_HASH_KEY: &str = "guide_hash";
 
-/// Upsert `docs/guide.html` as `artifacts/guide` when it changed since the last seed.
+/// Upsert `docs/guide.html` as `agent-reports/guide` when it changed since the last seed.
 pub async fn seed(app: &App) {
     let path = app.cfg.guide_path.clone();
     let source_text = match tokio::fs::read_to_string(&path).await {
@@ -86,7 +86,7 @@ pub async fn seed(app: &App) {
                 .events
                 .send(Event::ReportUpserted(ReportSummary::from(&row)));
             store_hash(app, &hash).await;
-            tracing::info!(rev = row.rev, "seeded artifacts/guide");
+            tracing::info!(rev = row.rev, "seeded agent-reports/guide");
         }
         Ok(PutResult::Unchanged(_)) => {
             store_hash(app, &hash).await;

@@ -50,7 +50,7 @@ pub fn document(report: &ReportRow, fragment: &str, cap: &str, version: &str) ->
         "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">\n\
 <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
 <meta name=\"color-scheme\" content=\"light dark\">\n\
-<meta name=\"artifacts-rev\" content=\"{rev}\">\n\
+<meta name=\"agent-reports-rev\" content=\"{rev}\">\n\
 <title>{project}: {title}</title>\n\
 <base href=\"/c/{cap}/\" target=\"_blank\">\n\
 <link rel=\"stylesheet\" href=\"/_render/report.css?v={version}\">\n\

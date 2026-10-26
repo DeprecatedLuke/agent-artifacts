@@ -7,7 +7,7 @@ function detected(spec: RendererSpec, root: ParentNode): boolean {
 	try {
 		return spec.detect(root);
 	} catch (err) {
-		console.error(`[artifacts] detect failed for ${spec.name}`, err);
+		console.error(`[agent-reports] detect failed for ${spec.name}`, err);
 		return false;
 	}
 }
@@ -30,7 +30,7 @@ export async function renderAll(root: ParentNode, theme: RenderContext["theme"])
 				const mod = await moduleFor(spec);
 				await mod.render(root, { theme });
 			} catch (err) {
-				console.error(`[artifacts] ${spec.name} render failed`, err);
+				console.error(`[agent-reports] ${spec.name} render failed`, err);
 			}
 		}),
 	);
@@ -42,7 +42,7 @@ export function resetAll(root: ParentNode): void {
 		try {
 			mod.reset?.(root);
 		} catch (err) {
-			console.error("[artifacts] reset failed", err);
+			console.error("[agent-reports] reset failed", err);
 		}
 	}
 }
@@ -55,7 +55,7 @@ export async function themeAll(root: ParentNode, theme: RenderContext["theme"]):
 			try {
 				await mod.theme(root, { theme });
 			} catch (err) {
-				console.error("[artifacts] theme re-render failed", err);
+				console.error("[agent-reports] theme re-render failed", err);
 			}
 		}),
 	);

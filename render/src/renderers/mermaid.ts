@@ -106,7 +106,7 @@ async function renderOne(mermaid: MermaidApi, pre: HTMLPreElement): Promise<void
 	const stale = pre.nextElementSibling;
 	if (stale?.matches(".mermaid-figure, .x-error")) stale.remove();
 	if (!source.trim()) return;
-	const id = `artifacts-mermaid-${++sequence}`;
+	const id = `agent-reports-mermaid-${++sequence}`;
 	try {
 		const { svg, bindFunctions } = await mermaid.render(id, source);
 		const figure = document.createElement("div");

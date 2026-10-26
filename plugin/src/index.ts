@@ -1,9 +1,9 @@
 /**
- * artifacts omp plugin.
+ * agent-reports omp plugin.
  *
  * Registers the process-global `report://` scheme (listings, guide, source reads
  * with hashline `edit`, text versions), the `report_upload` tool, and the
- * `/artifacts` command (login / logout / status). A `before_agent_start` hook
+ * `/agent-reports` command (login / logout / status). A `before_agent_start` hook
  * advertises the report workflow in the system prompt.
  */
 import * as os from "node:os";
@@ -24,7 +24,7 @@ import {
 } from "./api";
 import { readUploadParams } from "./guards";
 import {
-	ArtifactsReportHandler,
+	AgentReportsHandler,
 	type EditPushOutcome,
 	projectFromCwd,
 	pushPendingEdits,
@@ -47,9 +47,9 @@ const ALLOWED_ASSETS: Record<string, string> = {
 /** Install the `report://` handler into the host's process-global router once. */
 function installReportScheme(log: (message: string) => void): void {
 	const router = InternalUrlRouter.instance();
-	if (router.getHandler("report") instanceof ArtifactsReportHandler) return;
+	if (router.getHandler("report") instanceof AgentReportsHandler) return;
 	try {
-		router.register(new ArtifactsReportHandler());
+		router.register(new AgentReportsHandler());
 	} catch (error) {
 		log(`report:// scheme registration failed: ${error instanceof Error ? error.message : String(error)}`);
 	}
@@ -94,7 +94,7 @@ function describeError(error: unknown): string {
 
 function systemPromptSection(url: string, project: string, loggedIn: boolean): string {
 	const lines = [
-		"## artifacts (human-facing reports)",
+		"## agent-reports (human-facing reports)",
 		`<${url}> holds HTML reports the human reads: publish findings there instead of dumping long output into chat.`,
 		`- Create/overwrite: \`write report://<project>/<slug>\` — project is the repo dir name (here \`${project}\`); body = an HTML fragment or GitHub-flavoured Markdown after a \`---\` frontmatter block with \`title\` (and optional \`description\`).`,
 		`- Edit in place: hashline \`edit\` on \`report://<project>/<slug>\`. List: \`read report://list\` (\`?project=<name>\`, \`?project=*\`); text version: \`<slug>.md\`; guide: \`read report://guide\`.`,
@@ -102,14 +102,14 @@ function systemPromptSection(url: string, project: string, loggedIn: boolean): s
 		"- Rules: lead with the result; state each fact once (no recap, no conclusion); prefer tables/charts/images over prose; no narration, hedging, filler, or footnotes; edit the existing report instead of adding new ones.",
 		'- No unicode arrows, check marks, symbols or emoji (→ ✓ ✗ ⚠ ★ ▲ 🚀 …): use `<x-icon name="arrow-right"></x-icon>` (Heroicons names, optional `tone="ok|warn|err|muted|accent"`). The server rejects them.',
 	];
-	if (!loggedIn) lines.push("- Not logged in: run `/artifacts login` before publishing.");
+	if (!loggedIn) lines.push("- Not logged in: run `/agent-reports login` before publishing.");
 	return lines.join("\n");
 }
 
-export default function artifactsPlugin(pi: ExtensionAPI): void {
+export default function agentReportsPlugin(pi: ExtensionAPI): void {
 	installReportScheme(message => pi.logger.warn(message));
 
-	pi.setLabel("artifacts");
+	pi.setLabel("agent-reports");
 
 	pi.on("before_agent_start", async (event, ctx) => {
 		const cfg = await readConfig(ctx.cwd).catch(() => undefined);
@@ -134,7 +134,7 @@ export default function artifactsPlugin(pi: ExtensionAPI): void {
 		} catch (error) {
 			return {
 				isError: true,
-				content: [...event.content, { type: "text", text: `Not saved to artifacts: ${describeError(error)}` }],
+				content: [...event.content, { type: "text", text: `Not saved to agent-reports: ${describeError(error)}` }],
 			};
 		}
 		if (outcome.failed !== undefined) {
@@ -144,7 +144,7 @@ export default function artifactsPlugin(pi: ExtensionAPI): void {
 					...event.content,
 					{
 						type: "text",
-						text: `Not saved to artifacts: ${outcome.failed.url} — ${outcome.failed.error.message}`,
+						text: `Not saved to agent-reports: ${outcome.failed.url} — ${outcome.failed.error.message}`,
 					},
 				],
 			};
@@ -158,7 +158,7 @@ export default function artifactsPlugin(pi: ExtensionAPI): void {
 		name: "report_upload",
 		label: "Upload report asset",
 		description:
-			'Upload a local file (image, csv, json, or txt) as an asset of an artifacts report. Returns the markup to embed: `<img src="assets/<name>">` for images, `assets/<name>` as a `data.url` for csv/json.',
+			'Upload a local file (image, csv, json, or txt) as an asset of an agent-reports report. Returns the markup to embed: `<img src="assets/<name>">` for images, `assets/<name>` as a `data.url` for csv/json.',
 		parameters: pi.zod.object({
 			project: pi.zod.string().describe("report project, e.g. the repo dir name"),
 			slug: pi.zod.string().describe("report slug the asset belongs to (the report need not exist yet)"),
@@ -207,8 +207,8 @@ export default function artifactsPlugin(pi: ExtensionAPI): void {
 		},
 	});
 
-	pi.registerCommand("artifacts", {
-		description: "artifacts: login (Basic auth, stores the remember cookie), logout, status",
+	pi.registerCommand("agent-reports", {
+		description: "agent-reports: login (Basic auth, stores the remember cookie), logout, status",
 		getArgumentCompletions: prefix =>
 			["login", "logout", "status"]
 				.filter(value => value.startsWith(prefix))
@@ -221,13 +221,16 @@ export default function artifactsPlugin(pi: ExtensionAPI): void {
 					return;
 				case "logout":
 					await writeSession(ctx.cwd, undefined);
-					ctx.ui.notify("artifacts: logged out (session cleared)", "info");
+					ctx.ui.notify("agent-reports: logged out (session cleared)", "info");
 					return;
 				case "status":
 					await runStatus(ctx);
 					return;
 				default:
-					ctx.ui.notify(`artifacts: unknown subcommand "${subcommand}" — use login, logout, or status`, "warning");
+					ctx.ui.notify(
+						`agent-reports: unknown subcommand "${subcommand}" — use login, logout, or status`,
+						"warning",
+					);
 			}
 		},
 	});
@@ -235,25 +238,25 @@ export default function artifactsPlugin(pi: ExtensionAPI): void {
 
 async function runLogin(pi: ExtensionAPI, ctx: ExtensionContext): Promise<void> {
 	const cfg = await readConfig(ctx.cwd);
-	ctx.ui.notify(`artifacts: logging in to ${cfg.url}`, "info");
-	const username = await ctx.ui.input("Artifacts username", "user");
+	ctx.ui.notify(`agent-reports: logging in to ${cfg.url}`, "info");
+	const username = await ctx.ui.input("agent-reports username", "user");
 	if (username === undefined) {
-		ctx.ui.notify("artifacts: login cancelled", "info");
+		ctx.ui.notify("agent-reports: login cancelled", "info");
 		return;
 	}
-	const password = await ctx.ui.input("Artifacts password");
+	const password = await ctx.ui.input("agent-reports password");
 	if (password === undefined || password === "") {
-		ctx.ui.notify("artifacts: login cancelled", "info");
+		ctx.ui.notify("agent-reports: login cancelled", "info");
 		return;
 	}
 	const result = await loginWithBasic(cfg, username.trim() || "user", password);
 	if (!result.ok) {
-		ctx.ui.notify(`artifacts: login failed (HTTP ${result.status}) — check the username and password`, "error");
+		ctx.ui.notify(`agent-reports: login failed (HTTP ${result.status}) — check the username and password`, "error");
 		return;
 	}
 	if (result.cookie === undefined) {
 		ctx.ui.notify(
-			`artifacts: authenticated, but the server sent no ${COOKIE_NAME} cookie — check the Traefik remember-cookie config`,
+			`agent-reports: authenticated, but the server sent no ${COOKIE_NAME} cookie — check the Traefik remember-cookie config`,
 			"error",
 		);
 		return;
@@ -261,11 +264,11 @@ async function runLogin(pi: ExtensionAPI, ctx: ExtensionContext): Promise<void> 
 	await writeSession(ctx.cwd, result.cookie);
 	const stored = await readConfig(ctx.cwd);
 	const verified = await checkLogin(stored).catch(() => false);
-	pi.logger.info("artifacts: session cookie stored");
+	pi.logger.info("agent-reports: session cookie stored");
 	ctx.ui.notify(
 		verified
-			? `artifacts: logged in to ${stored.url} (session stored)`
-			: `artifacts: session stored for ${stored.url}, but /api/me rejected it — run /artifacts login again`,
+			? `agent-reports: logged in to ${stored.url} (session stored)`
+			: `agent-reports: session stored for ${stored.url}, but /api/me rejected it — run /agent-reports login again`,
 		verified ? "info" : "warning",
 	);
 }
@@ -274,14 +277,14 @@ async function runStatus(ctx: ExtensionContext): Promise<void> {
 	const cfg = await readConfig(ctx.cwd);
 	const lines = [`url: ${cfg.url}`, `project: ${projectFromCwd(ctx.cwd)}`];
 	if (cfg.session === undefined) {
-		lines.push("not logged in — run /artifacts login");
+		lines.push("not logged in — run /agent-reports login");
 	} else {
 		const ok = await checkLogin(cfg).catch(error => {
 			lines.push(`error: ${describeError(error)}`);
 			return false;
 		});
 		if (ok) lines.push("logged in (session cookie accepted)");
-		else if (lines.length === 2) lines.push("session cookie rejected — run /artifacts login");
+		else if (lines.length === 2) lines.push("session cookie rejected — run /agent-reports login");
 	}
-	ctx.ui.notify(`artifacts:\n${lines.join("\n")}`, "info");
+	ctx.ui.notify(`agent-reports:\n${lines.join("\n")}`, "info");
 }

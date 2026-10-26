@@ -1,10 +1,10 @@
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: artifacts-basic-auth
+  name: agent-reports-basic-auth
 spec:
   basicAuth:
-    secret: artifacts-auth
+    secret: agent-reports-auth
 ---
 # Set only on responses that already passed basicAuth (or carried a valid
 # cookie): basicAuth answers 401 itself and never reaches this middleware, so
@@ -13,11 +13,11 @@ spec:
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: artifacts-remember
+  name: agent-reports-remember
 spec:
   headers:
     customResponseHeaders:
-      Set-Cookie: "__Host-artifacts=${AGENT_REPORTS_SESSION_TOKEN}; Path=/; Max-Age=34560000; Secure; HttpOnly; SameSite=Lax"
+      Set-Cookie: "__Host-agent-reports=${AGENT_REPORTS_SESSION_TOKEN}; Path=/; Max-Age=34560000; Secure; HttpOnly; SameSite=Lax"
 ---
 # Authenticated routes: prove ownership to the app with a shared secret the
 # browser cannot send itself (basicAuth responses are checked first by Traefik,
@@ -25,19 +25,19 @@ spec:
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: artifacts-owner
+  name: agent-reports-owner
 spec:
   headers:
     customRequestHeaders:
-      X-Artifacts-Owner: "${AGENT_REPORTS_OWNER_SECRET}"
+      X-Agent-Reports-Owner: "${AGENT_REPORTS_OWNER_SECRET}"
 ---
-# Public routes: strip any client-supplied X-Artifacts-Owner so share and
+# Public routes: strip any client-supplied X-Agent-Reports-Owner so share and
 # render paths can never be upgraded to owner access.
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: artifacts-public
+  name: agent-reports-public
 spec:
   headers:
     customRequestHeaders:
-      X-Artifacts-Owner: ""
+      X-Agent-Reports-Owner: ""

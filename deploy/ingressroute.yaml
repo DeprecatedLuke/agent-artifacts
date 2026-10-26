@@ -8,7 +8,7 @@
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
-  name: artifacts
+  name: agent-reports
 spec:
   entryPoints:
     - websecure
@@ -18,28 +18,28 @@ spec:
       kind: Rule
       priority: 100
       middlewares:
-        - name: artifacts-public
+        - name: agent-reports-public
       services:
-        - name: artifacts
+        - name: agent-reports
           port: 80
-    - match: 'Host(`${AGENT_REPORTS_HOST}`) && HeaderRegexp(`Cookie`, `(^|;\s*)__Host-artifacts=${AGENT_REPORTS_SESSION_TOKEN}(;|$)`)'
+    - match: 'Host(`${AGENT_REPORTS_HOST}`) && HeaderRegexp(`Cookie`, `(^|;\s*)__Host-agent-reports=${AGENT_REPORTS_SESSION_TOKEN}(;|$)`)'
       kind: Rule
       priority: 50
       middlewares:
-        - name: artifacts-owner
-        - name: artifacts-remember
+        - name: agent-reports-owner
+        - name: agent-reports-remember
       services:
-        - name: artifacts
+        - name: agent-reports
           port: 80
     - match: Host(`${AGENT_REPORTS_HOST}`)
       kind: Rule
       priority: 10
       middlewares:
-        - name: artifacts-basic-auth
-        - name: artifacts-owner
-        - name: artifacts-remember
+        - name: agent-reports-basic-auth
+        - name: agent-reports-owner
+        - name: agent-reports-remember
       services:
-        - name: artifacts
+        - name: agent-reports
           port: 80
   tls:
-    secretName: artifacts-tls
+    secretName: agent-reports-tls

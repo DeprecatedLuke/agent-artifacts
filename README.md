@@ -32,9 +32,9 @@ human ── https://host/r/p/s ─────┘         │
 | `server/` | axum API, storage, websockets, validation, document wrapper, text version |
 | `web/` | Svelte 5 SPA: list, report, split view, share page |
 | `render/` | the in-iframe runtime and the one stylesheet every report uses |
-| `plugin/` | omp plugin: `report://` scheme, `report_upload`, `/artifacts login` |
+| `plugin/` | omp plugin: `report://` scheme, `report_upload`, `/agent-reports login` |
 | `deploy/` | kustomize manifests: Traefik basic auth + remember cookie, cert-manager, PVC |
-| `docs/guide.html` | the writing guide, also published as the report `artifacts/guide` |
+| `docs/guide.html` | the writing guide, also published as the report `agent-reports/guide` |
 
 ## Local development
 
@@ -43,7 +43,7 @@ task dev        # render (watch) + server on 127.0.0.1:8787 + Vite on :5173
 task check      # biome/tsc/svelte-check + cargo fmt/clippy/test
 ```
 
-`task dev` needs no secrets; the dev server trusts the `X-Artifacts-Owner` header that the Vite proxy adds.
+`task dev` needs no secrets; the dev server trusts the `X-Agent-Reports-Owner` header that the Vite proxy adds.
 
 ## Deploy
 
@@ -55,16 +55,16 @@ task secrets    # pull secret + DNS-01 API token into the namespace
 task release    # build, push, pin the tag, apply, wait for the rollout
 ```
 
-Authentication is entirely at the ingress: basic auth, then a `__Host-artifacts` cookie, then an
-`X-Artifacts-Owner` header the server requires on `/api/*`. Share links and render assets are served on
+Authentication is entirely at the ingress: basic auth, then a `__Host-agent-reports` cookie, then an
+`X-Agent-Reports-Owner` header the server requires on `/api/*`. Share links and render assets are served on
 routes with no auth at all, which is why the app itself never sets cookies.
 
 ## Using it from an agent
 
 ```sh
 cd plugin && bun install && omp plugin link "$PWD"
-omp plugin config set artifacts url https://artifacts.example.com
-/artifacts login
+omp plugin config set agent-reports url https://reports.example.com
+/agent-reports login
 ```
 
 | URL | Meaning |

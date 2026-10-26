@@ -3,8 +3,8 @@ import { enhanceAll, unenhanceAll } from "./enhance";
 import { renderAll, resetAll, themeAll } from "./pipeline";
 import type { Theme } from "./renderers/types";
 
-const SOURCE = "artifacts";
-const REV = document.querySelector('meta[name="artifacts-rev"]')?.getAttribute("content") ?? "";
+const SOURCE = "agent-reports";
+const REV = document.querySelector('meta[name="agent-reports-rev"]')?.getAttribute("content") ?? "";
 
 function systemTheme(): Theme {
 	const scheme = getComputedStyle(document.documentElement).colorScheme;
@@ -20,7 +20,7 @@ let explicitTheme = false;
 let chain: Promise<void> = Promise.resolve();
 
 function enqueue(task: () => void | Promise<void>): void {
-	chain = chain.then(task).catch(err => console.error("[artifacts]", err));
+	chain = chain.then(task).catch(err => console.error("[agent-reports]", err));
 }
 
 function post(type: "ready" | "updated", extra: Record<string, unknown> = {}): void {

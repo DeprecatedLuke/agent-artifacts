@@ -1,5 +1,5 @@
 /*!
- * artifacts report stylesheet — the shipped visual contract.
+ * agent-reports report stylesheet — the shipped visual contract.
  * Iron rule: no unicode arrows, check marks, symbols or emoji anywhere in a
  * report. Every glyph is a Heroicons 20/solid icon: `<x-icon name="…">` in
  * markup, or a mask painted from an icon reference right here in this file (the
@@ -9,7 +9,7 @@
  */
 
 /*
- * artifacts — the single standard stylesheet for every report.
+ * agent-reports — the single standard stylesheet for every report.
  * Agents never write CSS; this file is the whole visual language.
  * Theme is driven by `color-scheme` on :root; every colour uses light-dark().
  */
